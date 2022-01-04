@@ -21,7 +21,7 @@ for ldx = 1:length(lambda)
     ac_blg = 10;
     lambda_recur = 0;
     prev_end_t = 0;
-    mu = 0.83 / es_blg;
+    mu = 0.5 / es_blg;
 
     pkt_list = zeros(num,3);
     pkt_list(:,1) = cumsum(exprnd(1/lambda(ldx), num, 1));
@@ -90,9 +90,10 @@ for ldx = 1:length(lambda)
             crp_list = pkt_list(ptr:ptr+blg_end,:);
             if sum(crp_list(:,3) == 1) <= 1
                 disp FALSE_COLL
+                return
             end
             crp_min_t = 0;
-            crp_mu = 0.5 / 3;
+            crp_mu = 0.5 / 2;
             crp_ptr = 1;
             crp_blg = sum(crp_list(:,3)==1);
             crp_cnt = 0;
@@ -142,14 +143,12 @@ for ldx = 1:length(lambda)
                     end
                 end
             end
-            if crp_ptr ~= scs + 1
-                disp FALSE_CRP_END
-            end
+
             min_t = crp_min_t;
             coll_t = min_t - coll_start_t;
             es_blg = max(1 + es_blg * exp(-mu * idle_t) + lambda_recur * coll_t,1);
             pkt_list(ptr:ptr+blg_end,:) = crp_list;
-            ptr = crp_ptr;
+            ptr = scs + 1;
             old_blg = pkt_list(ptr+blg_end+1:scs+blg,1) < min_t;
             pkt_list(ptr+blg_end+1:scs+blg,1) = pkt_list(ptr+blg_end+1:scs+blg,1) + exprnd(1/mu,blg-blg_end-1,1) .* old_blg;
             pkt_list(ptr:scs+blg,:) = sortrows(pkt_list(ptr:scs+blg,:),1);
@@ -173,7 +172,7 @@ figure
 plot(lambda,thrpt_list,'LineWidth',1)
 legend('Estimated','Location','northeast','Interpreter','latex','FontSize',14.4)
 grid on
-xlabel('\lambda','Interpreter','latex','FontSize',17.6)
+xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
 ylabel('Throughput (packet/sec)','Interpreter','latex','FontSize',17.6)
 title('Pure ALOHA CRP','Interpreter','latex','FontSize',17.6)
 
@@ -181,6 +180,6 @@ figure
 plot(lambda,dly_list,'LineWidth',1)
 legend('Estimated','Location','northeast','Interpreter','latex','FontSize',14.4)
 grid on
-xlabel('\lambda','Interpreter','latex','FontSize',17.6)
+xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
 ylabel('Delay (sec)','Interpreter','latex','FontSize',17.6)
 title('Pure ALOHA CRP','Interpreter','latex','FontSize',17.6)
