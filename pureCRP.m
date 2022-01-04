@@ -9,6 +9,7 @@ thrpt_list = zeros(length(lambda),1);
 dly_list = zeros(length(lambda),1);
 
 for ldx = 1:length(lambda)
+    tic
     num = ceil(2.5 * lambda(ldx) * ENDTIME);
     ptr = 1;
     blg = 0;
@@ -90,21 +91,96 @@ for ldx = 1:length(lambda)
             if sum(crp_list(:,3) == 1) <= 1
                 disp FALSE_COLL
             end
-            crp_t = 0;
-            crp_mu = 0.83 / 3;
+            crp_min_t = 0;
+            crp_mu = 0.5 / 3;
+            crp_ptr = 1;
+            crp_blg = sum(crp_list(:,3)==1);
+            crp_cnt = 0;
+            crp_list(:,1) = crp_list(:,1) + exprnd(1/crp_mu,crp_blg,1);
+            crp_list = sortrows(crp_list,1);
             while sum(crp_list(:,3) == 1)  > 0
                 if sum(crp_list(:,3) == 1) == 1
                     idx = find(crp_list(:,3) == 1);
+                    if idx ~= crp_ptr
+                        disp FASLSE_CRP_IDX
+                    end
                     crp_list(idx,3) = -1;   % column 3 == -1 => scs
                     scs = scs + 1;
                     dly = dly + crp_list(idx,1) - crp_list(idx,2) + 1;
                     blg = blg - 1;
+                    crp_ptr = crp_ptr + 1;
+                    crp_blg = crp_blg - 1;
+                    crp_min_t = crp_list(idx,1) + 1;
+                    if crp_blg ~= 0
+                        disp FALSE_CRP_BLG
+                    end
                 else
-                    
+                    crp_min_t = crp_list(crp_ptr,1) + 1;
+                    crp_sect = crp_list(crp_ptr:end,1) < crp_min_t;
+                    if sum(crp_sect) == 1
+                        scs = scs + 1;
+                        dly = dly + crp_list(crp_ptr,1) - crp_list(crp_ptr,2) + 1;
+                        crp_list(crp_ptr,3) = -1;
+                        crp_ptr = crp_ptr + 1;
+                        crp_blg = crp_blg - 1;
+                        crp_cnt = crp_cnt + 1;
+                        blg = blg - 1;
+                        if crp_cnt > 1
+                            break;
+                        end
+                    else
+                        crp_sect_num = sum(crp_sect) - 1;
+                        while crp_sect_num > 0 && crp_min_t < ENDTIME
+                            crp_list(crp_ptr:crp_ptr+crp_sect_num-1,1) = crp_list(crp_ptr:crp_ptr+crp_sect_num-1,1) + 1 + exprnd(1/crp_mu,crp_sect_num,1);
+                            crp_min_t = crp_list(crp_ptr+crp_sect_num,1) + 1;
+                            crp_list(crp_ptr:end,:) = sortrows(crp_list(crp_ptr:end,:),1);
+                            crp_sect_num = sum(crp_list(crp_ptr:end,1) < crp_min_t) - 1;
+                        end
+                        crp_list(crp_ptr,1) = crp_list(crp_ptr,1) + 1 + exprnd(1/crp_mu);
+                        crp_list(crp_ptr:end,:) = sortrows(crp_list(crp_ptr:end,:),1);
+                        crp_cnt = 0;
+                    end
                 end
             end
-
+            if crp_ptr ~= scs + 1
+                disp FALSE_CRP_END
+            end
+            min_t = crp_min_t;
+            coll_t = min_t - coll_start_t;
+            es_blg = max(1 + es_blg * exp(-mu * idle_t) + lambda_recur * coll_t,1);
+            pkt_list(ptr:ptr+blg_end,1) = crp_list;
+            ptr = crp_ptr;
+            old_blg = pkt_list(ptr+blg_end+1:scs+blg,1) < min_t;
+            pkt_list(ptr+blg_end+1:scs+blg,1) = pkt_list(ptr+blg_end+1:scs+blg,1) + exprnd(1/mu,blg-blg_end-1,1) .* old_blg;
+            pkt_list(ptr:scs+blg,:) = sortrows(pkt_list(ptr:scs+blg,:),1);
+            new_blg = sum(pkt_list(ptr+blg:end,1) < min_t);
+            if new_blg > 0
+                pkt_list(ptr+blg:scs+blg+new_blg,1) = min_t + exprnd(1/mu,new_blg,1);
+                pkt_list(ptr+blg:scs+blg+new_blg,3) = 1;
+                blg = blg + new_blg;
+            end
+            pkt_list(ptr:scs+blg,:) = sortrows(pkt_list(ptr:scs+blg,:),1);
         end
-
+        prev_end_t = min_t
+        mu = 0.5 / es_blg;
     end
+    thrpt_list(ldx) = scs / min_t;
+    dly_list(ldx) = dly / scs;
+    toc
 end
+
+figure
+plot(lambda,thrpt_list,'LineWidth',1)
+legend('Estimated','Location','northeast','Interpreter','latex','FontSize',14.4)
+grid on
+xlabel('\lambda','Interpreter','latex','FontSize',17.6)
+ylabel('Throughput (packet/sec)','Interpreter','latex','FontSize',17.6)
+title('Pure ALOHA CRP','Interpreter','latex','FontSize',17.6)
+
+figure
+plot(lambda,dly_list,'LineWidth',1)
+legend('Estimated','Location','northeast','Interpreter','latex','FontSize',14.4)
+grid on
+xlabel('\lambda','Interpreter','latex','FontSize',17.6)
+ylabel('Delay (sec)','Interpreter','latex','FontSize',17.6)
+title('Pure ALOHA CRP','Interpreter','latex','FontSize',17.6)
