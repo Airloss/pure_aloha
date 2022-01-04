@@ -161,7 +161,7 @@ for ldx = 1:length(lambda)
             end
             pkt_list(ptr:scs+blg,:) = sortrows(pkt_list(ptr:scs+blg,:),1);
         end
-        prev_end_t = min_t
+        prev_end_t = min_t;
         mu = 0.5 / es_blg;
     end
     thrpt_list(ldx) = scs / min_t;
