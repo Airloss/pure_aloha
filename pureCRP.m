@@ -10,7 +10,7 @@ dly_list = zeros(length(lambda),1);
 
 for ldx = 1:length(lambda)
     tic
-    num = ceil(2.5 * lambda(ldx) * ENDTIME);
+    num = ceil(3 * lambda(ldx) * ENDTIME);
     ptr = 1;
     blg = 0;
     scs = 0;
