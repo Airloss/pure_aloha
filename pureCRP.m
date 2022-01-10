@@ -57,8 +57,8 @@ parfor (ldx = 1:length(lambda),6)
         min_t = pkt_list(ptr,1) + 1;
 
         % cycle period
-        sect = pkt_list(ptr:scs+blg,1) < min_t;
-        if sum(sect) == 1
+        sect = sum(pkt_list(ptr:scs+blg,1) < min_t);
+        if sect == 1
             lambda_recur = THEATA * lambda_recur + (1-THEATA) / (min_t - prev_end_t);
             es_blg = max(es_blg * exp(-mu * idle_t) + lambda_recur,1);
             scs = scs + 1;
@@ -69,7 +69,7 @@ parfor (ldx = 1:length(lambda),6)
         else
             coll_start_t = pkt_list(ptr,1);
             lambda_recur = lambda_recur * THEATA;
-            blg_end = sum(sect) - 1;
+            blg_end = sect - 1;
 
             % collision period
             while blg_end > 0 && min_t < ENDTIME
