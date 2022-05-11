@@ -1,7 +1,7 @@
 clear
 
 THEATA = 0.99;
-ENDTIME = 1e5;
+ENDTIME = 2e5;
 SLOT = 1;
 
 lambda = 0.01:0.01:0.30;
@@ -12,7 +12,7 @@ scs_crp_list = zeros(length(lambda),1); % Record the mean of success packets in 
 
 tic
 parfor (ldx = 1:length(lambda),6)
-    num = ceil(3.5 * lambda(ldx) * ENDTIME);
+    num = ceil(5 * lambda(ldx) * ENDTIME);
     ptr = 1;
     blg = 0;
     scs = 0;
@@ -28,19 +28,27 @@ parfor (ldx = 1:length(lambda),6)
         cnt = cnt + 1;
 
         if blg == 0
-            pkt_list(ptr,3) = 1;    % column 3 == 1 stack in backlog list
+            pkt_list(ptr,1) = pkt_list(ptr,1) + 1 + 2 * rand;
+            pkt_list(ptr,3) = 1;
             blg = 1;
         end
 
-        min_t = pkt_list(ptr,1) + 1;    % packet length equals 1
-        new_blg = sum(pkt_list(ptr+blg:end,1) < min_t);
-        if new_blg > 0
+        min_t = pkt_list(ptr,1) + 1;
+        new_pkt = sum(pkt_list(ptr+blg:end,1) < min_t);
+        if new_pkt > 0
+            bof = 2 + 2 .* rand(new_pkt,1);
+            min_t_temp = min( min( pkt_list(ptr+blg:scs+blg+new_pkt,1) + bof ) + 1, min_t );
+            new_blg = sum(pkt_list(ptr+blg:scs+blg+new_pkt,1) < min_t_temp);
+            pkt_list(ptr+blg:scs+blg+new_blg,1) = pkt_list(ptr+blg:scs+blg+new_blg,1) + bof(1:new_blg);
             pkt_list(ptr+blg:scs+blg+new_blg,3) = 1;
             blg = blg + new_blg;
             pkt_list(ptr:scs+blg,:) = sortrows(pkt_list(ptr:scs+blg,:),1);
+            if min_t_temp ~= pkt_list(ptr,1) + 1
+                disp FALSE_NEW_PKT
+            end
+            min_t = pkt_list(ptr,1) + 1;
         end
 
-        % cycle period
         sect = sum(pkt_list(ptr:scs+blg,1) < min_t);
         if sect == 1
             scs = scs + 1;
@@ -57,6 +65,7 @@ parfor (ldx = 1:length(lambda),6)
                 min_t = pkt_list(ptr+blg_end,1) + 1;
                 new_blg = sum(pkt_list(ptr+blg:end,1) < min_t);
                 if new_blg > 0
+                    pkt_list(ptr+blg:scs+blg+new_blg,1) = pkt_list(ptr+blg:scs+blg+new_blg,1) + 1 + 2 .* rand(new_blg,1);
                     pkt_list(ptr+blg:scs+blg+new_blg,3) = 1;
                     blg = blg + new_blg;
                     pkt_list(ptr:scs+blg,:) = sortrows(pkt_list(ptr:scs+blg,:),1);
@@ -72,7 +81,7 @@ parfor (ldx = 1:length(lambda),6)
 
             % ? collision process
             pkt_list(ptr,1) = min_t;
-            pkt_list(ptr+1:ptr+blg_end-1,1) = pkt_list(ptr+blg_end,1) + 3 * SLOT + 1 + 2 .^ min((pkt_list(ptr+1:ptr+blg_end-1,3)),10) .* rand(blg_end-1,1);
+            pkt_list(ptr+1:ptr+blg_end-1,1) = pkt_list(ptr+blg_end,1) + 2 * SLOT + 1 + 2 .^ min((pkt_list(ptr+1:ptr+blg_end-1,3)) + 4,10) .* rand(blg_end-1,1);
             pkt_list(ptr+blg_end,1) = min_t + 1 * SLOT;
             pkt_list(ptr:scs+blg,:) = sortrows(pkt_list(ptr:scs+blg,:),1);
 
@@ -87,6 +96,7 @@ parfor (ldx = 1:length(lambda),6)
             min_t = pkt_list(ptr,1) + 1;
             new_blg = sum(pkt_list(ptr+blg:end,1) < min_t);
             if new_blg > 0
+                pkt_list(ptr+blg:scs+blg+new_blg,1) = pkt_list(ptr+blg:scs+blg+new_blg,1) + 1 + 2 .* rand(new_blg,1);
                 pkt_list(ptr+blg:scs+blg+new_blg,3) = 1;
                 blg = blg + new_blg;
                 pkt_list(ptr:scs+blg,:) = sortrows(pkt_list(ptr:scs+blg,:),1);
@@ -104,6 +114,7 @@ parfor (ldx = 1:length(lambda),6)
                     min_t = pkt_list(ptr,1) + 1;
                     new_blg = sum(pkt_list(ptr+blg:end,1) < min_t);
                     if new_blg > 0
+                        pkt_list(ptr+blg:scs+blg+new_blg,1) = pkt_list(ptr+blg:scs+blg+new_blg,1) + 1 + 2 .* rand(new_blg,1);
                         pkt_list(ptr+blg:scs+blg+new_blg,3) = 1;
                         blg = blg + new_blg;
                         pkt_list(ptr:scs+blg,:) = sortrows(pkt_list(ptr:scs+blg,:),1);
@@ -119,35 +130,27 @@ parfor (ldx = 1:length(lambda),6)
                 end
             end
         end
-        % pkt_drop = pkt_list(ptr:scs+blg,3) > 32;
-        % if sum(pkt_drop) > 0
-        %     pkt_list(pkt_drop,1) = min_t - 1 - rand(sum(pkt_drop),1);
-        %     pkt_list(pkt_drop,3) = -2;
-        %     pkt_list(ptr:scs+blg,:) = sortrows(pkt_list(ptr:scs+blg,:),1);
-        %     blg = blg - sum(pkt_drop);
-        %     scs = scs + sum(pkt_drop);
-        %     ptr = scs + 1;
-        % end
     end
     thrpt_list(ldx) = scs / min_t;
     dly_list(ldx) = dly / scs;
 end
+
 toc
 
 figure
 plot(lambda,thrpt_list,'LineWidth',1)
-legend('Estimated','Location','northwest','Interpreter','latex','FontSize',14.4)
+legend('Min Interval: $2^{5}$','Location','northwest','Interpreter','latex','FontSize',14.4)
 grid on
-xlim([0 0.36])
+xlim([0 0.3])
 xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
 ylabel('Throughput (packet/sec)','Interpreter','latex','FontSize',17.6)
 title('Pure ALOHA BEB','Interpreter','latex','FontSize',17.6)
 
 figure
 plot(lambda,dly_list,'LineWidth',1)
-legend('Estimated','Location','northwest','Interpreter','latex','FontSize',14.4)
+legend('Min Interval: $2^{5}$','Location','northwest','Interpreter','latex','FontSize',14.4)
 grid on
-xlim([0 0.3])
+xlim([0 0.30])
 ylim([0 300])
 xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
 ylabel('Delay (sec)','Interpreter','latex','FontSize',17.6)
