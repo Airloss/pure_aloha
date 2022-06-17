@@ -3,7 +3,7 @@ clear
 THEATA = 0.99;
 ENDTIME = 1e6;
 
-lambda = 0.01:0.01:0.4;
+lambda = 0.01:0.01:0.3;
 
 thrpt_list = zeros(length(lambda),1);
 dly_list = zeros(length(lambda),1);
