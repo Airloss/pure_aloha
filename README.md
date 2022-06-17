@@ -1,4 +1,4 @@
-# Pure ALOHA Analysis
+# Random Access about Pure (Unslotted) ALOHA
 
 Structure of repo:
 
