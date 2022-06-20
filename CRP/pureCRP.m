@@ -1,7 +1,7 @@
 clear
 
 THEATA = 0.99;
-ENDTIME = 1e6;
+ENDTIME = 1e5;
 
 lambda = 0.01:0.01:0.3;
 
