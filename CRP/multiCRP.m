@@ -91,9 +91,6 @@ parfor (ldx = 1:length(lambda),6)
             end
 
             if channel_flag == 0
-                
-                ptr_ = ptr + sect;
-                blg_ = blg - sect;
 
                 % CRP period in addtional channel
                 scs_crp = 0;
@@ -156,11 +153,33 @@ parfor (ldx = 1:length(lambda),6)
                     disp FALSE_CRP_SCS
                 end
 
+                % CRP end
+                
+                
                 % New arrival in channel
+                ptr_ = ptr + sect;
+                blg_ = blg - sect;
+
                 while pkt_list(ptr_,1) < crp_min_t
                     min_t_temp = pkt_list(ptr_,1) + 1;
                     new_pkt = sum(pkt_list(ptr_+blg_:end,1) < min_t_temp);
                     if new_pkt > 0
+                        bof = exprnd(1/mu,new_pkt,1);
+                        min_t_temp = min(min(pkt_list(ptr_+blg_:ptr_+blg_-1+new_pkt,1)+bof)+1, min_t_temp);
+                        new_blg = sum(pkt_list(ptr_+blg_:ptr_+blg_-1+new_pkt,1) < min_t_temp);
+                        pkt_list(ptr_+blg_:ptr_+blg_-1+new_blg,1) = pkt_list(ptr_+blg_:ptr_+blg_-1+new_blg,1) + bof(1:new_blg);
+                        pkt_list(ptr_+blg_:ptr_+blg_-1+new_blg,3) = 1;
+                        blg_ = blg_ + new_blg;
+                        pkt_list(ptr_:ptr_+blg_-1,:) = sortrows(pkt_list(ptr_:ptr_+blg_-1,:),1);
+                    end
+                    sect_ = sum(pkt_list(ptr_:ptr_+blg_-1,1) < pkt_list(ptr_,1) + 1);
+                    if sect_ == 1
+                        scs = scs + 1;
+                        dly = dly + pkt_list(ptr_,1) - pkt_list(ptr_,2) + 1;
+                        pkt_list(ptr_,3) = -1;
+                        ptr_ = ptr_ + 1;
+                        blg_ = blg_ - 1;
+                    else
                         
                     end
                 end
