@@ -10,8 +10,10 @@ dly_list = zeros(length(lambda),1);
 avg_coll = zeros(length(lambda),1);
 avg_idle = zeros(length(lambda),1);
 
-crp_scs_list = zeros(length(lambda),1); % Record the mean of success packets in CRP
+crp_thrpt1 = zeros(length(lambda),1);
+crp_thrpt2 = zeros(length(lambda),1);
 crp_len = zeros(length(lambda),1);
+crp_efficiency = crp_len;
 crp_avg_coll = zeros(length(lambda),1);
 
 crp_mu = 0.5 / 2;
@@ -256,15 +258,17 @@ parfor (ldx = 1:length(lambda),6)
     dly_list(ldx) = dly / scs;
     avg_coll(ldx) = coll_t / cnt_coll;
     avg_idle(ldx) = idle_t / cnt;
-    % crp_scs_list(ldx) = crp_scs / crp_cnt;
+    crp_thrpt1(ldx) = crp_scs / min_t;
+    crp_thrpt2(ldx) = crp_scs / crp_t;
     crp_len(ldx) = crp_t / crp_cnt;
+    crp_efficiency(ldx) = crp_t / min_t;
     crp_avg_coll(ldx) = crp_coll / crp_cnt;
 end
 toc
 
 figure
-plot(lambda,thrpt_list,'LineWidth',1)
-legend('Main Channel Throughput','Location','southeast','Interpreter','latex','FontSize',14.4)
+plot(lambda,crp_thrpt1,lambda,crp_thrpt2,lambda,thrpt_list,'LineWidth',1)
+legend('CRP Thrpughput 1','CRP Thrpughput 2','Total Throughput','Location','southeast','Interpreter','latex','FontSize',14.4)
 grid on
 % xlim([0 0.36])
 xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
@@ -283,6 +287,15 @@ title('Pure ALOHA CRP','Interpreter','latex','FontSize',17.6)
 figure
 plot(lambda,crp_len ./ (avg_coll + avg_idle),'LineWidth',1)
 legend('CRP:Trans','Location','southeast','Interpreter','latex','FontSize',14.4)
+grid on
+% xlim([0 0.36])
+xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
+ylabel('CRP:(Idle+Collision)','Interpreter','latex','FontSize',17.6)
+title('Pure ALOHA CRP','Interpreter','latex','FontSize',17.6)
+
+figure
+plot(lambda,crp_efficiency,'LineWidth',1)
+legend('CRP Channel Efficiency','Location','southeast','Interpreter','latex','FontSize',14.4)
 grid on
 % xlim([0 0.36])
 xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
