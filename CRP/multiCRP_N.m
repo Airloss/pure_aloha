@@ -4,7 +4,7 @@ THEATA = 0.99;
 ENDTIME = 1e5;
 m = 2;
 
-lambda = 0.4:0.01:0.8;
+lambda = 0.3:0.1:0.8;
 
 thrpt_list = zeros(length(lambda),1);
 dly_list = zeros(length(lambda),1);
@@ -20,7 +20,7 @@ lambda_recur = 0.2;
 
 tic
 for ldx = 1:length(lambda)
-    num = ceil(3 * lambda(ldx) * ENDTIME);
+    num = ceil(ENDTIME / (1/lambda(ldx)));
     ptr = 1;
     blg = 0;
     scs = 0;
@@ -42,15 +42,25 @@ for ldx = 1:length(lambda)
     channel_flag = zeros(m,1);
     channel_mint = channel_flag;
     pkt_list = zeros(num,3);
-    
-    pkt_list(:,1) = cumsum(exprnd(1/lambda(ldx), num, 1));
+    idx = 1;
+    while pkt_list(idx,1) < ENDTIME && idx <= num
+        sft = randi([1,ceil(lambda(ldx)*10)]);
+        if idx + sft > num
+            break;
+        end
+        pkt_list(idx:idx+sft-1,1) = pkt_list(idx,1) + exprnd(1/lambda(ldx),sft,1);
+        pkt_list(idx + sft,1) = max(pkt_list(idx:idx+sft,1));
+        idx = idx + sft;
+    end
+    pkt_list(idx:end,:) = [];
+    pkt_list = sortrows(pkt_list,1);
     pkt_list(:,2) = pkt_list(:,1);
 
-    while min_t < ENDTIME
+    while min_t < ENDTIME && ptr < num - 10
         cnt = cnt + 1;
 
         if blg == 0
-            pkt_list(ptr,1) = pkt_list(ptr,1) + exprnd(mu,1);
+            pkt_list(ptr,1) = pkt_list(ptr,1) + 0;
             pkt_list(ptr,3) = 1;    % stack in backlog list
             blg = 1;
         end
@@ -58,12 +68,12 @@ for ldx = 1:length(lambda)
         min_t_temp = pkt_list(ptr,1) + 1;    % packet length equals 1
         new_pkt = sum(pkt_list(ptr+blg:end,1) < min_t_temp);
         if new_pkt > 0
-            bof = exprnd(1/mu, new_pkt, 1);
+            bof = 0;
             min_t_temp = min(min( ...
                 pkt_list(ptr+blg:scs+blg+new_pkt,1)+bof)+1, min_t_temp);
             new_blg = sum(pkt_list(ptr+blg:scs+blg+new_pkt,1) < min_t_temp);
             pkt_list(ptr+blg:scs+blg+new_blg,1) = pkt_list( ...
-                ptr+blg:scs+blg+new_blg,1) + bof(1:new_blg);
+                ptr+blg:scs+blg+new_blg,1) + bof;
             pkt_list(ptr+blg:scs+blg+new_blg,3) = 1;
             blg = blg + new_blg;
             pkt_list(ptr:scs+blg,:) = sortrows(pkt_list(ptr:scs+blg,:),1);
@@ -93,7 +103,7 @@ for ldx = 1:length(lambda)
                 new_blg = sum(pkt_list(ptr+blg:end,1) < min_t);
                 if new_blg > 0
                     pkt_list(ptr+blg:scs+blg+new_blg,1) = pkt_list( ...
-                        ptr+blg:scs+blg+new_blg,1) + exprnd(1/mu,new_blg,1);
+                        ptr+blg:scs+blg+new_blg,1) + 0;
                     pkt_list(ptr+blg:scs+blg+new_blg,3) = 1;
                     blg = blg + new_blg;
                     pkt_list(ptr:scs+blg,:) = sortrows(pkt_list(ptr:scs+blg,:),1);
@@ -190,17 +200,17 @@ for ldx = 1:length(lambda)
                     % mu = 0.6468 / max(ac_blg,1);
                     cnt = cnt + 1;
                     if blg == 0
-                        pkt_list(ptr,1) = pkt_list(ptr,1) + exprnd(mu,1);
+                        pkt_list(ptr,1) = pkt_list(ptr,1) + 0;
                         pkt_list(ptr,3) = 1;    % stack in backlog list
                         blg = 1;
                     end
                     min_t_temp = pkt_list(ptr,1) + 1;    % packet length equals 1
                     new_pkt = sum(pkt_list(ptr+blg:end,1) < min_t_temp);
                     if new_pkt > 0
-                        bof = exprnd(1/mu, new_pkt, 1);
+                        bof = 0;
                         min_t_temp = min(min(pkt_list(ptr+blg:scs+blg+new_pkt,1)+bof)+1, min_t_temp);
                         new_blg = sum(pkt_list(ptr+blg:scs+blg+new_pkt,1) < min_t_temp);
-                        pkt_list(ptr+blg:scs+blg+new_blg,1) = pkt_list(ptr+blg:scs+blg+new_blg,1) + bof(1:new_blg);
+                        pkt_list(ptr+blg:scs+blg+new_blg,1) = pkt_list(ptr+blg:scs+blg+new_blg,1) + bof;
                         pkt_list(ptr+blg:scs+blg+new_blg,3) = 1;
                         blg = blg + new_blg;
                         pkt_list(ptr:scs+blg,:) = sortrows(pkt_list(ptr:scs+blg,:),1);
