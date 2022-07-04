@@ -1,12 +1,19 @@
 clear
 
-crp_l = zeros(100,1);
-crp_s = crp_l;
+fname1 = sprintf('data/finite/CRP_L_%.2f_%d.mat',1,1000);
+fname2 = sprintf('data/finite/CRP_S_%.2f_%d.mat',1,1000);
+load(fname1,'crp_l');
+load(fname2,'crp_s');
+crp_l(1) = [];
+crp_s(1) = [];
 
-crp_l(2) = crp_l_i(crp_l,0.25,2,1);
-crp_s(2) = crp_s_i(crp_s,0.25,2,1);
-crp_s(3) = crp_s_i(crp_s,0.25,3,1);
-crp_l(3) = crp_l_i(crp_l,0.25,3,1);
-crp_l(4) = crp_l_i(crp_l,0.25,4,1);
-a = 1 - prob_n_beta(10,0.25,1:3,1);
-b = prod(a);
+idx = 1:30;
+
+figure
+plot(idx,crp_l(idx),'LineWidth',1)
+legend('Main Channel Throughput','Location','southeast','Interpreter','latex','FontSize',14.4)
+grid on
+% xlim([0 0.36])
+xlabel('$k$','Interpreter','latex','FontSize',17.6)
+ylabel('$L_{k}$','Interpreter','latex','FontSize',17.6)
+title('CRP(k) Duration','Interpreter','latex','FontSize',17.6)

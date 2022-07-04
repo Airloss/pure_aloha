@@ -1,7 +1,7 @@
 clear
 
 THEATA = 0.99;
-ENDTIME = 1e5;
+ENDTIME = 2e4;
 
 lambda = 0.28:0.01:0.4;
 
@@ -11,7 +11,8 @@ avg_coll = zeros(length(lambda),1);
 avg_idle = zeros(length(lambda),1);
 
 crp_thrpt1 = zeros(length(lambda),1);
-crp_thrpt2 = zeros(length(lambda),1);
+crp_thrpt2 = crp_thrpt1;
+crp_thrpt3 = crp_thrpt1;
 crp_len = zeros(length(lambda),1);
 crp_efficiency = crp_len;
 crp_avg_coll = zeros(length(lambda),1);
@@ -258,8 +259,9 @@ parfor (ldx = 1:length(lambda),6)
     dly_list(ldx) = dly / scs;
     avg_coll(ldx) = coll_t / cnt_coll;
     avg_idle(ldx) = idle_t / cnt;
-    crp_thrpt1(ldx) = crp_scs / min_t;
-    crp_thrpt2(ldx) = crp_scs / crp_t;
+    crp_thrpt1(ldx) = crp_scs / crp_t;
+    crp_thrpt2(ldx) = crp_scs / min_t;
+    crp_thrpt3(ldx) = (scs - crp_scs) / min_t;
     crp_len(ldx) = crp_t / crp_cnt;
     crp_efficiency(ldx) = crp_t / min_t;
     crp_avg_coll(ldx) = crp_coll / crp_cnt;
@@ -267,8 +269,8 @@ end
 toc
 
 figure
-plot(lambda,crp_thrpt1,lambda,crp_thrpt2,lambda,thrpt_list,'LineWidth',1)
-legend('CRP Thrpughput 1','CRP Thrpughput 2','Total Throughput','Location','southeast','Interpreter','latex','FontSize',14.4)
+plot(lambda,crp_thrpt1,lambda,crp_thrpt2,lambda,crp_thrpt3,lambda,thrpt_list ./ 2,'LineWidth',1)
+legend('CRP Thrpughput 1','CRP Thrpughput 2','Main Channel Thrpughput 2','Total Throughput','Location','southeast','Interpreter','latex','FontSize',14.4)
 grid on
 % xlim([0 0.36])
 xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)

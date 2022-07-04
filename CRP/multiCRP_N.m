@@ -19,7 +19,7 @@ crp_mu = 0.5 / 2;
 lambda_recur = 0.2;
 
 tic
-for ldx = 1:length(lambda)
+parfor (ldx = 1:length(lambda),6)
     num = ceil(ENDTIME / (1/lambda(ldx)));
     ptr = 1;
     blg = 0;
