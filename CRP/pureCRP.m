@@ -14,7 +14,7 @@ crp_avg_t = zeros(length(lambda),1);
 
 tic
 parfor (ldx = 1:length(lambda),6)
-    num = ceil(3 * lambda(ldx) * ENDTIME);
+    num = ceil(2 * lambda(ldx) * ENDTIME);
     ptr = 1;
     blg = 0;
     scs = 0;
