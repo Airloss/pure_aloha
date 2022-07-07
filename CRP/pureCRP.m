@@ -1,7 +1,8 @@
 clear
 
 THEATA = 0.99;
-ENDTIME = 1e5;
+ENDTIME = 2e5;
+crp_mu = 0.36;
 
 lambda = 0.01:0.01:0.35;
 
@@ -29,6 +30,7 @@ parfor (ldx = 1:length(lambda),6)
     cnt_crp = 0;
     crp_t = 0;
     crp_sz = 0;
+    scs_crp = 0;
     lambda_recur = 0.2;
     prev_end_t = 0;
     mu = 0.6468 / es_blg;
@@ -99,7 +101,6 @@ parfor (ldx = 1:length(lambda),6)
             end
             coll_tt = coll_tt + min_t - coll_start_t;
             % CRP period
-            scs_crp = 0;
             cnt_crp = cnt_crp + 1;
             pkt_list(ptr:ptr+blg_end,1) = min_t;
             crp_start_t = min_t;
@@ -108,7 +109,6 @@ parfor (ldx = 1:length(lambda),6)
                 disp FALSE_COLL
             end
             crp_min_t = 0;
-            crp_mu = 0.5 / 2;
             crp_blg = sum(crp_list(:,3)==1);
             crp_sz = crp_sz + crp_blg;
             crp_list(:,1) = crp_list(:,1) + exprnd(1/crp_mu,crp_blg,1);
@@ -194,12 +194,16 @@ parfor (ldx = 1:length(lambda),6)
     end
     thrpt_list(ldx) = scs / min_t;
     dly_list(ldx) = dly / scs;
-    % scs_crp_list(ldx) = scs_crp / cnt_crp;
+    scs_crp_list(ldx) = scs_crp / crp_t;
     crp_avg_t(ldx) = crp_t / cnt_crp;
     avg_coll(ldx) = coll_tt / cnt;
     blg_list(ldx) = blg_sum / cnt;
 end
 toc
+
+pt = find(thrpt_list == max(thrpt_list));
+disp(thrpt_list(pt));
+disp(crp_mu);
 
 figure
 plot(lambda,thrpt_list,'LineWidth',1)
@@ -209,30 +213,38 @@ xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
 ylabel('Throughput (packet/sec)','Interpreter','latex','FontSize',17.6)
 title('Pure ALOHA CRP','Interpreter','latex','FontSize',17.6)
 
-figure
-plot(lambda,avg_coll,'LineWidth',1)
-legend('Collision','Location','northwest','Interpreter','latex','FontSize',14.4)
-grid on
-xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
-ylabel('Time (sec)','Interpreter','latex','FontSize',17.6)
-title('Pure ALOHA CRP','Interpreter','latex','FontSize',17.6)
-
-figure
-plot(lambda,blg_list,'LineWidth',1)
-legend('Backlog','Location','northwest','Interpreter','latex','FontSize',14.4)
-grid on
-xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
-ylabel('Number','Interpreter','latex','FontSize',17.6)
-title('Pure ALOHA CRP','Interpreter','latex','FontSize',17.6)
-
-figure
-plot(lambda,dly_list,'LineWidth',1)
-legend('Estimated','Location','northwest','Interpreter','latex','FontSize',14.4)
-grid on
-ylim([0 300])
-xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
-ylabel('Delay (sec)','Interpreter','latex','FontSize',17.6)
-title('Pure ALOHA CRP','Interpreter','latex','FontSize',17.6)
+% figure
+% plot(lambda,avg_coll,'LineWidth',1)
+% legend('Collision','Location','northwest','Interpreter','latex','FontSize',14.4)
+% grid on
+% xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
+% ylabel('Time (sec)','Interpreter','latex','FontSize',17.6)
+% title('Pure ALOHA CRP','Interpreter','latex','FontSize',17.6)
+% 
+% figure
+% plot(lambda,blg_list,'LineWidth',1)
+% legend('Backlog','Location','northwest','Interpreter','latex','FontSize',14.4)
+% grid on
+% xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
+% ylabel('Number','Interpreter','latex','FontSize',17.6)
+% title('Pure ALOHA CRP','Interpreter','latex','FontSize',17.6)
+% 
+% figure
+% plot(lambda,dly_list,'LineWidth',1)
+% legend('Estimated','Location','northwest','Interpreter','latex','FontSize',14.4)
+% grid on
+% ylim([0 300])
+% xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
+% ylabel('Delay (sec)','Interpreter','latex','FontSize',17.6)
+% title('Pure ALOHA CRP','Interpreter','latex','FontSize',17.6)
+% 
+% figure
+% plot(lambda,scs_crp_list,'LineWidth',1)
+% legend('CRP','Location','northwest','Interpreter','latex','FontSize',14.4)
+% grid on
+% xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
+% ylabel('Time (packet/sec)','Interpreter','latex','FontSize',17.6)
+% title('Pure ALOHA CRP','Interpreter','latex','FontSize',17.6)
 
 figure
 plot(lambda,crp_avg_t,'LineWidth',1)

@@ -5,7 +5,7 @@ ENDTIME = 1e5;
 CHANNEL = 2;
 
 lambda = 0.2:0.01:0.4;
-betaT = 0.6;
+betaT = 0.5;
 
 thrpt_list = zeros(length(lambda),1);
 chanl_thrpt = zeros(length(lambda),1);
@@ -16,7 +16,7 @@ crp_thrpt_ideal = zeros(length(lambda),1);
 crp_len = zeros(length(lambda),1);
 crp_invov = zeros(length(lambda),1);
 
-crp_mu = 0.75 / 2;
+crp_mu = 0.36;
 
 tic
 parfor (ldx = 1:length(lambda),6)
@@ -282,18 +282,27 @@ xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
 ylabel('Throughput (packet/sec)','Interpreter','latex','FontSize',17.6)
 title('Pure ALOHA CRP','Interpreter','latex','FontSize',17.6)
 
-% figure
-% plot(lambda,dly_list,'LineWidth',1)
-% legend('Delay','Location','northwest','Interpreter','latex','FontSize',14.4)
-% grid on
-% ylim([0 300])
-% xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
-% ylabel('Delay (sec)','Interpreter','latex','FontSize',17.6)
-% title('Pure ALOHA CRP','Interpreter','latex','FontSize',17.6)
+figure
+plot(lambda,dly_list,'LineWidth',1)
+legend('Delay','Location','northwest','Interpreter','latex','FontSize',14.4)
+grid on
+ylim([0 300])
+xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
+ylabel('Delay (sec)','Interpreter','latex','FontSize',17.6)
+title('Pure ALOHA CRP','Interpreter','latex','FontSize',17.6)
 
 figure
-plot(lambda,crp_len,lambda,crp_thrpt_ideal,'LineWidth',1.5)
-legend('CRP Propotion','CRP Throughput Ideal','Location','southeast','Interpreter','latex','FontSize',14.4)
+plot(lambda,crp_len,'LineWidth',1.5)
+legend('CRP Propotion','Location','southeast','Interpreter','latex','FontSize',14.4)
+grid on
+% xlim([0 0.36])
+xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
+ylabel('Channel Efficiency','Interpreter','latex','FontSize',17.6)
+title('Pure ALOHA CRP','Interpreter','latex','FontSize',17.6)
+
+figure
+plot(lambda,crp_thrpt_ideal,'LineWidth',1.5)
+legend('CRP Throughput Ideal','Location','southeast','Interpreter','latex','FontSize',14.4)
 grid on
 % xlim([0 0.36])
 xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
