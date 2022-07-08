@@ -4,8 +4,8 @@ THEATA = 0.99;
 ENDTIME = 1e5;
 CHANNEL = 2;
 
-lambda = 0.2:0.01:0.4;
-betaT = 0.5;
+lambda = 0.4:0.02:0.6;
+betaT = 0.64;
 
 thrpt_list = zeros(length(lambda),1);
 chanl_thrpt = zeros(length(lambda),1);
@@ -31,7 +31,7 @@ parfor (ldx = 1:length(lambda),6)
     status = blg;
     blg_end = blg;
     mu = blg;
-    mu(1:2) = 0.6468 / 10;
+    mu(1:2) = 0.6468 / 2;
 
     crp_flag = 0;
     wait_flag = blg;
