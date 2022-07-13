@@ -1,7 +1,7 @@
 clear
 
-USER = 3;
-ENDTIME = 2e5;
+USER = 2;
+ENDTIME = 1e5;
 
 lambda = 0.02:0.02:0.6;
 
@@ -43,12 +43,6 @@ for ldx = 1:length(lambda)
             trans_list = sortrows(trans_list,1);
         else
             num = sum(trans_list(:,1) <= min_t) - 1;
-            if num < USER - 1
-                while num > 0 && min_t <= ENDTIME
-                    min_t = 
-                end
-            end
-            
             crp_start_t = min_t;
             crp_list = trans_list;
             crp_mu = 0.36;
