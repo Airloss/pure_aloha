@@ -1,9 +1,10 @@
 clear
 
 THEATA = 0.99;
-ENDTIME = 2e4;
+ENDTIME = 1e5;
+betaT = 0.8;
 
-lambda = 0.28:0.01:0.4;
+lambda = 0.3:0.01:0.6;
 
 thrpt_list = zeros(length(lambda),1);
 dly_list = zeros(length(lambda),1);
@@ -17,11 +18,10 @@ crp_len = zeros(length(lambda),1);
 crp_efficiency = crp_len;
 crp_avg_coll = zeros(length(lambda),1);
 
-crp_mu = 0.5 / 2;
 lambda_recur = 0.2;
 
 tic
-parfor (ldx = 1:length(lambda),6)
+for ldx = 1:length(lambda)
     num = ceil(3 * lambda(ldx) * ENDTIME);
     ptr = 1;
     blg = 0;
@@ -34,6 +34,7 @@ parfor (ldx = 1:length(lambda),6)
     coll_t = 0;
     idle_t = 0;
     cnt_coll = 0;
+    crp_chnl_cnt = 0;
     crp_t = 0;
     crp_cnt = 0;
     crp_scs = 0;
@@ -108,16 +109,16 @@ parfor (ldx = 1:length(lambda),6)
 
             % CRP period in addtional channel
             crp_cnt = crp_cnt + 1;
-            pkt_list(ptr:ptr+blg_end,1) = min_t;
             crp_start_t = min_t;
+            pkt_list(ptr:ptr+blg_end,1) = min_t;
             crp_list = pkt_list(ptr:ptr+blg_end,:);
             if sum(crp_list(:,3) == 1) <= 1
                 disp FALSE_COLL
             end
             crp_min_t = 0;
+            crp_period = 0;
+            crp_prob = 0.5;
             crp_blg = sum(crp_list(:,3)==1);
-            crp_list(:,1) = crp_list(:,1) + exprnd(1/crp_mu,crp_blg,1);
-            crp_list = sortrows(crp_list,1);
             crp_coll = crp_coll + crp_blg;
             while sum(crp_list(:,3) == 1)  > 0 && crp_min_t < ENDTIME
                 if sum(crp_list(:,3) == 1) == 1
@@ -129,36 +130,27 @@ parfor (ldx = 1:length(lambda),6)
                     blg = blg - 1;
                     crp_min_t = crp_list(idx,1) + 1;
                 else
-                    crp_trans_idx = crp_list(:,3) == 1;
-                    crp_trans_list = crp_list(crp_trans_idx,:);
-                    crp_min_t = crp_trans_list(1,1) + 1;
-                    crp_sect = sum(crp_trans_list(:,1) < crp_min_t);
-                    if crp_sect == 1
+                    crp_trans = rand(sum(crp_list(:,3)==1),1) <= crp_prob;
+                    if sum(crp_trans) == 0
+                        crp_prob = 0.5;
+                    elseif sum(crp_trans) == 1
+                        crp_prob = 1;
+                        crp_pretrans_idx = find(crp_list(:,3) == 1);
+                        crp_trans_idx = find(crp_trans);
+                        crp_list(crp_pretrans_idx(crp_trans_idx),3) = -1;
                         scs = scs + 1;
                         crp_scs = crp_scs + 1;
-                        dly = dly + crp_trans_list(1,1) - crp_trans_list(1,2) + 1;
-                        crp_trans_list(1,3) = -1;
+                        dly = dly + crp_list(crp_pretrans_idx(crp_trans_idx),1) - crp_list(crp_pretrans_idx(crp_trans_idx),2) + 1;
                         blg = blg - 1;
-                        crp_trans_list(2:end,1) = crp_trans_list(1,1) + 1;
                     else
-                        crp_sect_num = crp_sect - 1;
-                        while crp_sect_num > 0 && crp_min_t < ENDTIME
-                            crp_min_t = crp_trans_list(crp_sect,1) + 1;
-                            crp_sect = sum(crp_trans_list(:,1) < crp_min_t);
-                            crp_trans_list(1:crp_sect,3) = 2;
-                            if crp_sect == crp_sect_num + 1
-                                break;
-                            else
-                                crp_sect_num = crp_sect - 1;
-                            end
-                        end
-                        crp_trans_list(1:crp_sect,1) = crp_min_t ...
-                            + exprnd(1/crp_mu,crp_sect,1);
-                        crp_trans_list(:,3) = crp_trans_list(:,3) - 1;  % particapate: 1, not: 0
-                        crp_trans_list = sortrows(crp_trans_list,1);
+                        crp_prob = 0.5;
+                        crp_pretrans_idx = find(crp_list(:,3) == 1);
+                        crp_trans_idx = find(~crp_trans);
+                        crp_list(crp_pretrans_idx(crp_trans_idx),3) = 0;
                     end
-                    crp_list(crp_trans_idx,:) = crp_trans_list;
                 end
+                crp_list(:,1) = crp_list(:,1) + 1;
+                crp_period = crp_period + 1;
             end
             crp_t = crp_t + crp_min_t - crp_start_t;
             
@@ -182,6 +174,7 @@ parfor (ldx = 1:length(lambda),6)
                 % ac_blg = sum(pkt_list(:,2) < min_t) - scs;
                 % mu = 0.6468 / max(ac_blg,1);
                 cnt = cnt + 1;
+                crp_chnl_cnt = crp_chnl_cnt + 1;
                 if blg == 0
                     pkt_list(ptr,1) = pkt_list(ptr,1) + exprnd(mu,1);
                     pkt_list(ptr,3) = 1;    % stack in backlog list
@@ -253,7 +246,7 @@ parfor (ldx = 1:length(lambda),6)
             % return
         end
         prev_end_t = min_t;
-        mu = 0.6468 / max(ac_blg,1); % a temp setting
+        mu = betaT / max(ac_blg,1); % a temp setting
     end
     thrpt_list(ldx) = scs / min_t;
     dly_list(ldx) = dly / scs;
@@ -262,7 +255,7 @@ parfor (ldx = 1:length(lambda),6)
     crp_thrpt1(ldx) = crp_scs / crp_t;
     crp_thrpt2(ldx) = crp_scs / min_t;
     crp_thrpt3(ldx) = (scs - crp_scs) / min_t;
-    crp_len(ldx) = crp_t / crp_cnt;
+    crp_len(ldx) = crp_chnl_cnt / crp_cnt;
     crp_efficiency(ldx) = crp_t / min_t;
     crp_avg_coll(ldx) = crp_coll / crp_cnt;
 end
@@ -270,7 +263,7 @@ toc
 
 figure
 plot(lambda,crp_thrpt1,lambda,crp_thrpt2,lambda,crp_thrpt3,lambda,thrpt_list ./ 2,'LineWidth',1)
-legend('CRP Thrpughput 1','CRP Thrpughput 2','Main Channel Thrpughput 2','Total Throughput','Location','southeast','Interpreter','latex','FontSize',14.4)
+legend('C1','C2','M1','Total','Location','southeast','Interpreter','latex','FontSize',14.4)
 grid on
 % xlim([0 0.36])
 xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
@@ -279,7 +272,7 @@ title('Pure ALOHA CRP','Interpreter','latex','FontSize',17.6)
 
 figure
 plot(lambda,avg_coll,lambda,avg_idle,lambda,avg_idle + avg_coll,lambda,crp_len,'LineWidth',1)
-legend('Average Collision','Average Idle','Average Idle + Coll','Average CRP Length','Location','northeast','Interpreter','latex','FontSize',14.4)
+legend('Coll','Idle','Idle + Coll','CRP','Location','northeast','Interpreter','latex','FontSize',14.4)
 grid on
 % xlim([0 0.36])
 xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
@@ -297,7 +290,7 @@ title('Pure ALOHA CRP','Interpreter','latex','FontSize',17.6)
 
 figure
 plot(lambda,crp_efficiency,'LineWidth',1)
-legend('CRP Channel Efficiency','Location','southeast','Interpreter','latex','FontSize',14.4)
+legend('CRP Channel Utilization','Location','southeast','Interpreter','latex','FontSize',14.4)
 grid on
 % xlim([0 0.36])
 xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)

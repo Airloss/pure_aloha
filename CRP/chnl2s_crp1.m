@@ -4,7 +4,7 @@ THEATA = 0.99;
 ENDTIME = 1e5;
 CHANNEL = 2;
 
-lambda = 0.02:0.02:0.6;
+lambda = 0.4:0.02:0.6;
 betaT = 0.64;
 
 thrpt_list = zeros(length(lambda),1);
@@ -19,7 +19,7 @@ crp_invov = zeros(length(lambda),1);
 crp_mu = 0.36;
 
 tic
-parfor (ldx = 1:length(lambda),6)
+for ldx = 1:length(lambda)
     % initialize param & packet list
     num = ceil(1.5 * lambda(ldx) * ENDTIME);
     ptr = ones(CHANNEL,1);
@@ -123,20 +123,21 @@ parfor (ldx = 1:length(lambda),6)
             pkt_list(ptr(jdx):ptr(jdx)+blg_end(jdx),1,jdx) = min_t(jdx) + exprnd(1/mu(jdx),blg_end(jdx)+1,1);
             pkt_list(ptr(jdx):scs(jdx)+blg(jdx),:,jdx) = sortrows(pkt_list(ptr(jdx):scs(jdx)+blg(jdx),:,jdx),1);
         end
-%         status = 0;
         if crp_flag == 1
             crp_cnt = crp_cnt + 1;
             pkt_list(ptr(crp_idx):ptr(crp_idx)+blg_end(crp_idx),1,crp_idx) = min_t(crp_idx);
             crp_start_t = min_t(crp_idx);
             crp_list = pkt_list(ptr(crp_idx):ptr(crp_idx)+blg_end(crp_idx),:,crp_idx);
             if sum(crp_list(:,3) == 1) <= 1
+                disp(pkt_list(ptr(crp_idx):ptr(crp_idx)+blg_end(crp_idx),:,crp_idx));
                 disp FALSE_COLL
+                return
             end
             crp_min_t = 0;
+            crp_period = 0;
+            crp_prob = 0.5;
             crp_blg = sum(crp_list(:,3) == 1);
             crp_num = crp_num + crp_blg;
-            crp_list(:,1) = crp_list(:,1) + exprnd(1/crp_mu,crp_blg,1);
-            crp_list = sortrows(crp_list,1);
             while sum(crp_list(:,3) == 1)  > 0 && crp_min_t < ENDTIME
                 if sum(crp_list(:,3) == 1) == 1
                     ic = find(crp_list(:,3) == 1);
@@ -147,36 +148,33 @@ parfor (ldx = 1:length(lambda),6)
                     blg(crp_idx) = blg(crp_idx) - 1;
                     crp_min_t = crp_list(ic,1) + 1;
                 else
-                    crp_trans_idx = crp_list(:,3) == 1;
-                    crp_trans_list = crp_list(crp_trans_idx,:);
-                    crp_min_t = crp_trans_list(1,1) + 1;
-                    crp_sect = sum(crp_trans_list(:,1) < crp_min_t);
-                    if crp_sect == 1
+                    crp_trans = rand(sum(crp_list(:,3)==1),1) <= crp_prob;
+                    if sum(crp_trans) == 0
+                        crp_prob = 0.5;
+                    elseif sum(crp_trans) == 1
+                        crp_prob = 1;
+                        crp_pretrans_idx = find(crp_list(:,3) == 1);
+                        crp_trans_idx = find(crp_trans);
+                        crp_list(crp_pretrans_idx(crp_trans_idx),3) = -1;
                         scs(crp_idx) = scs(crp_idx) + 1;
                         crp_scs = crp_scs + 1;
-                        dly(crp_idx) = dly(crp_idx) + crp_trans_list(1,1) - crp_trans_list(1,2) + 1;
-                        crp_trans_list(1,3) = -1;
+                        dly(crp_idx) = dly(crp_idx) + crp_list(crp_pretrans_idx(crp_trans_idx),1) - crp_list(crp_pretrans_idx(crp_trans_idx),2) + 1;
                         blg(crp_idx) = blg(crp_idx) - 1;
-                        crp_trans_list(2:end,1) = crp_trans_list(1,1) + 1;
                     else
-                        crp_sect_num = crp_sect - 1;
-                        while crp_sect_num > 0 && crp_min_t < ENDTIME
-                            crp_min_t = crp_trans_list(crp_sect,1) + 1;
-                            crp_sect = sum(crp_trans_list(:,1) < crp_min_t);
-                            crp_trans_list(1:crp_sect,3) = 2;
-                            if crp_sect == crp_sect_num + 1
-                                break;
-                            else
-                                crp_sect_num = crp_sect - 1;
-                            end
-                        end
-                        crp_trans_list(1:crp_sect,1) = crp_min_t + exprnd(1/crp_mu,crp_sect,1);
-                        crp_trans_list(:,3) = crp_trans_list(:,3) - 1;  % particapate: 1, not: 0
-                        crp_trans_list = sortrows(crp_trans_list,1);
+                        crp_prob = 0.5;
+                        crp_pretrans_idx = find(crp_list(:,3) == 1);
+                        crp_trans_idx = find(~crp_trans);
+                        crp_list(crp_pretrans_idx(crp_trans_idx),3) = 0;
                     end
-                    crp_list(crp_trans_idx,:) = crp_trans_list;
                 end
+                crp_list(:,1) = crp_list(:,1) + 1;
+                crp_period = crp_period + 1;
             end
+%             if ceil(crp_min_t - crp_start_t) ~= ceil(crp_period)
+%                 disp(crp_min_t - crp_start_t);
+%                 disp(crp_period);
+%                 disp FALSE_CRP_TIME
+%             end
             crp_t = crp_t + crp_min_t - crp_start_t;
 
             if sum(crp_list(:,3) < -1) > 0
