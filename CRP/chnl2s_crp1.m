@@ -4,7 +4,7 @@ THEATA = 0.99;
 ENDTIME = 1e5;
 CHANNEL = 2;
 
-lambda = 0.4:0.02:0.6;
+lambda = 0.02:0.02:0.4;
 betaT = 0.64;
 
 thrpt_list = zeros(length(lambda),1);
