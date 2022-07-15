@@ -1,7 +1,7 @@
 clear
 
 THEATA = 0.99;
-ENDTIME = 1e5;
+ENDTIME = 2e5;
 CHANNEL = 2;
 
 lambda = 0.02:0.02:0.6;
@@ -69,11 +69,6 @@ parfor (ldx = 1:length(lambda),6)
                 blg(idx) = blg(idx) + new_blg;
                 pkt_list(ptr(idx):scs(idx)+blg(idx),:,idx) = sortrows(pkt_list(ptr(idx):scs(idx)+blg(idx),:,idx),1);
             end
-            % idle_t = idle_t + pkt_list(ptr(idx),1) - min_t;
-            % if idle_t < 0
-            %     disp FALSE_IDLE_MINUS
-            %     % return
-            % end
             min_t(idx) = pkt_list(ptr(idx),1,idx) + 1;
             sect = sum(pkt_list(ptr(idx):scs(idx)+blg(idx),1,idx) < min_t(idx));
             if sect == 1

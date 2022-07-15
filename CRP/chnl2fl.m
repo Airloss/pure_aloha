@@ -4,7 +4,7 @@ THEATA = 0.99;
 ENDTIME = 2e4;
 CHANNEL = 2;
 
-lambda = 0.01:0.01:0.6;
+lambda = 0.02:0.02:0.6;
 betaT = 0.6;
 
 thrpt_list = zeros(length(lambda),1);
@@ -100,6 +100,8 @@ parfor (ldx = 1:length(lambda),6)
                     if sect == blg_end(idx) + 1
                         break;
                     else
+%                         disp(1);
+%                         disp(pkt_list(ptr(idx):ptr(idx)+blg_end(idx),1,idx)')
                         blg_end(idx) = sect - 1;
                     end
                 end
@@ -123,71 +125,29 @@ parfor (ldx = 1:length(lambda),6)
         end
         if crp_flag == 1
             crp_cnt = crp_cnt + 1;
-            pkt_list(ptr(crp_idx):ptr(crp_idx)+blg_end(crp_idx),1,crp_idx) = min_t(crp_idx);
-            crp_start_t = min_t(crp_idx);
+            crp_scs = crp_scs + 2;
+            crp_min_t = min_t(crp_idx) + 2;
+            crp_t = crp_t + 2;
             crp_list = pkt_list(ptr(crp_idx):ptr(crp_idx)+blg_end(crp_idx),:,crp_idx);
-            if sum(crp_list(:,3) == 1) <= 1
-                disp(pkt_list(ptr(crp_idx):ptr(crp_idx)+blg_end(crp_idx),:,crp_idx));
-                disp FALSE_COLL
-            end
-            crp_min_t = 0;
-            crp_period = 0;
-            crp_prob = 0.5;
-            crp_blg = sum(crp_list(:,3) == 1);
-            crp_num = crp_num + crp_blg;
-            while sum(crp_list(:,3) == 1)  > 0 && crp_min_t < ENDTIME
-                if sum(crp_list(:,3) == 1) == 1
-                    ic = find(crp_list(:,3) == 1);
-                    crp_list(ic,3) = -1;   % column 3 == -1 => scs
-                    scs(crp_idx) = scs(crp_idx) + 1;
-                    crp_scs = crp_scs + 1;
-                    dly(crp_idx) = dly(crp_idx) + crp_list(ic,1) - crp_list(ic,2) + 1;
-                    blg(crp_idx) = blg(crp_idx) - 1;
-                    crp_min_t = crp_list(ic,1) + 1;
-                else
-                    crp_trans = rand(sum(crp_list(:,3)==1),1) <= crp_prob;
-                    if sum(crp_trans) == 0
-                        crp_prob = 0.5;
-                    elseif sum(crp_trans) == 1
-                        crp_prob = 1;
-                        crp_pretrans_idx = find(crp_list(:,3) == 1);
-                        crp_trans_idx = find(crp_trans);
-                        crp_list(crp_pretrans_idx(crp_trans_idx),3) = -1;
-                        scs(crp_idx) = scs(crp_idx) + 1;
-                        crp_scs = crp_scs + 1;
-                        dly(crp_idx) = dly(crp_idx) + crp_list(crp_pretrans_idx(crp_trans_idx),1) - crp_list(crp_pretrans_idx(crp_trans_idx),2) + 1;
-                        blg(crp_idx) = blg(crp_idx) - 1;
-                    else
-                        crp_prob = 0.5;
-                        crp_pretrans_idx = find(crp_list(:,3) == 1);
-                        crp_trans_idx = find(~crp_trans);
-                        crp_list(crp_pretrans_idx(crp_trans_idx),3) = 0;
-                    end
-                end
-                crp_list(:,1) = crp_list(:,1) + 1;
-                crp_period = crp_period + 1;
-            end
-%             if ceil(crp_min_t - crp_start_t) ~= ceil(crp_period)
-%                 disp(crp_min_t - crp_start_t);
-%                 disp(crp_period);
-%                 disp FALSE_CRP_TIME
-%             end
-            crp_t = crp_t + crp_min_t - crp_start_t;
+            % first pkt success
+            scs(crp_idx) = scs(crp_idx) + 1;
+            dly(crp_idx) = dly(crp_idx) + pkt_list(ptr(crp_idx),1,crp_idx) - pkt_list(ptr(crp_idx),2,crp_idx) + 1;
+            pkt_list(ptr(crp_idx),3,crp_idx) = -1;
+            crp_list(1,3) = -1;
+            % last pkt success
+            scs(crp_idx) = scs(crp_idx) + 1;
+            dly(crp_idx) = dly(crp_idx) + pkt_list(ptr(crp_idx)+blg_end(crp_idx),1,crp_idx) - pkt_list(ptr(crp_idx)+blg_end(crp_idx),2,crp_idx) + 1;
+            pkt_list(ptr(crp_idx)+blg_end(crp_idx),3,crp_idx) = -1;
+            crp_list(end,3) = -1;
+            crp_list(2:end-1,1) = min_t(crp_idx) + 2 + exprnd(1/mu(crp_idx),blg_end(crp_idx)-1,1);
+            crp_list = sortrows(crp_list,1);
+            % end
+            ptr(crp_idx) = ptr(crp_idx) + 2;
+            blg(crp_idx) = blg(crp_idx) - 2;
+            pkt_list(ptr(crp_idx)+1:ptr(crp_idx)+blg_end(crp_idx)-1,1,crp_idx) = 2 + min_t(crp_idx) + exprnd(1/mu(crp_idx),blg_end(crp_idx)-1,1);
+            pkt_list(ptr(crp_idx):ptr(crp_idx)+blg(crp_idx),:,crp_idx) = sortrows(pkt_list(ptr(crp_idx):ptr(crp_idx)+blg(crp_idx),:,crp_idx),1);
 
-            if sum(crp_list(:,3) < -1) > 0
-                disp FALSE_CRP_SCS
-            end
-
-            % CRP end
-            if sum(crp_list(:,3) >= 0) > 0
-                crp_list(crp_list(:,3)>=0,1) = crp_min_t + exprnd(1/mu(crp_idx),sum(crp_list(:,3)>=0),1);
-                crp_list(crp_list(:,3)>=0,3) = 1;
-                crp_list = sortrows(crp_list,1);
-            end
-            pkt_list(ptr(crp_idx):ptr(crp_idx)+blg_end(crp_idx),:,crp_idx) = crp_list;
-            ptr(crp_idx) = scs(crp_idx) + 1;
-            pkt_list(ptr(crp_idx):scs(crp_idx)+blg(crp_idx),:,crp_idx) = sortrows(pkt_list(ptr(crp_idx):scs(crp_idx)+blg(crp_idx),:,crp_idx),1);
-
+            
             %% During CRP
             for ii = 1:2
                 while sum(pkt_list(ptr(ii):end,1,ii) < crp_min_t) > 0
@@ -241,6 +201,8 @@ parfor (ldx = 1:length(lambda),6)
                             if sect == blg_end(ii) + 1
                                 break;
                             else
+%                                 disp(2);
+%                                 disp(pkt_list(ptr(idx):ptr(idx)+blg_end(idx),1,idx)')
                                 blg_end(ii) = sect - 1;
                             end
                         end
@@ -264,7 +226,7 @@ parfor (ldx = 1:length(lambda),6)
     crp_thrpt(ldx) = crp_scs / sum(min_t) * 2;
     crp_thrpt_ideal(ldx) = crp_scs / crp_t;
     crp_len(ldx) = crp_t / sum(min_t) * 2;
-    crp_invov(ldx) = crp_num / crp_cnt;
+    % crp_invov(ldx) = crp_num / crp_cnt;
 end
 toc
 

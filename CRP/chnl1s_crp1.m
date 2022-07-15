@@ -4,7 +4,7 @@ THEATA = 0.99;
 ENDTIME = 1e5;
 betaT = 0.8;
 
-lambda = 0.3:0.01:0.6;
+lambda = 0.01:0.01:0.6;
 
 thrpt_list = zeros(length(lambda),1);
 dly_list = zeros(length(lambda),1);
@@ -21,7 +21,7 @@ crp_avg_coll = zeros(length(lambda),1);
 lambda_recur = 0.2;
 
 tic
-for ldx = 1:length(lambda)
+parfor (ldx = 1:length(lambda))
     num = ceil(3 * lambda(ldx) * ENDTIME);
     ptr = 1;
     blg = 0;
