@@ -1,11 +1,11 @@
 clear
 
 THEATA = 0.99;
-ENDTIME = 2e4;
+ENDTIME = 1e6;
 CHANNEL = 2;
 
 lambda = 0.02:0.02:0.6;
-betaT = 0.6;
+betaT = 0.6468;
 
 thrpt_list = zeros(length(lambda),1);
 chanl_thrpt = zeros(length(lambda),1);
@@ -13,12 +13,12 @@ dly_list = zeros(length(lambda),1);
 
 crp_thrpt = zeros(length(lambda),1);
 crp_thrpt_ideal = zeros(length(lambda),1);
-crp_len = zeros(length(lambda),1);
+crp_chnl_util = zeros(length(lambda),1);
 crp_invov = zeros(length(lambda),1);
 
 tic
 parfor (ldx = 1:length(lambda),6)
-    % initialize param & packet list
+    % Initialize param & packet list
     num = ceil(1.5 * lambda(ldx) * ENDTIME);
     ptr = ones(CHANNEL,1);
     blg = zeros(CHANNEL,1);
@@ -67,11 +67,6 @@ parfor (ldx = 1:length(lambda),6)
                 blg(idx) = blg(idx) + new_blg;
                 pkt_list(ptr(idx):scs(idx)+blg(idx),:,idx) = sortrows(pkt_list(ptr(idx):scs(idx)+blg(idx),:,idx),1);
             end
-            % idle_t = idle_t + pkt_list(ptr(idx),1) - min_t;
-            % if idle_t < 0
-            %     disp FALSE_IDLE_MINUS
-            %     % return
-            % end
             min_t(idx) = pkt_list(ptr(idx),1,idx) + 1;
             sect = sum(pkt_list(ptr(idx):scs(idx)+blg(idx),1,idx) < min_t(idx));
             if sect == 1
@@ -100,8 +95,6 @@ parfor (ldx = 1:length(lambda),6)
                     if sect == blg_end(idx) + 1
                         break;
                     else
-%                         disp(1);
-%                         disp(pkt_list(ptr(idx):ptr(idx)+blg_end(idx),1,idx)')
                         blg_end(idx) = sect - 1;
                     end
                 end
@@ -146,7 +139,6 @@ parfor (ldx = 1:length(lambda),6)
             blg(crp_idx) = blg(crp_idx) - 2;
             pkt_list(ptr(crp_idx)+1:ptr(crp_idx)+blg_end(crp_idx)-1,1,crp_idx) = 2 + min_t(crp_idx) + exprnd(1/mu(crp_idx),blg_end(crp_idx)-1,1);
             pkt_list(ptr(crp_idx):ptr(crp_idx)+blg(crp_idx),:,crp_idx) = sortrows(pkt_list(ptr(crp_idx):ptr(crp_idx)+blg(crp_idx),:,crp_idx),1);
-
             
             %% During CRP
             for ii = 1:2
@@ -169,11 +161,6 @@ parfor (ldx = 1:length(lambda),6)
                         blg(ii) = blg(ii) + new_blg;
                         pkt_list(ptr(ii):scs(ii)+blg(ii),:,ii) = sortrows(pkt_list(ptr(ii):scs(ii)+blg(ii),:,ii),1);
                     end
-                    % idle_t = idle_t + pkt_list(ptr(ii),1) - min_t;
-                    % if idle_t < 0
-                    %     disp FALSE_IDLE_MINUS
-                    %     % return
-                    % end
                     min_t(ii) = pkt_list(ptr(ii),1,ii) + 1;
                     sect = sum(pkt_list(ptr(ii):scs(ii)+blg(ii),1,ii) < min_t(ii));
                     if sect == 1
@@ -201,8 +188,6 @@ parfor (ldx = 1:length(lambda),6)
                             if sect == blg_end(ii) + 1
                                 break;
                             else
-%                                 disp(2);
-%                                 disp(pkt_list(ptr(idx):ptr(idx)+blg_end(idx),1,idx)')
                                 blg_end(ii) = sect - 1;
                             end
                         end
@@ -224,9 +209,7 @@ parfor (ldx = 1:length(lambda),6)
     chanl_thrpt(ldx) = (sum(scs)-crp_scs) / sum(min_t);
     dly_list(ldx) = sum(dly ./ scs) / 2;
     crp_thrpt(ldx) = crp_scs / sum(min_t) * 2;
-    crp_thrpt_ideal(ldx) = crp_scs / crp_t;
-    crp_len(ldx) = crp_t / sum(min_t) * 2;
-    % crp_invov(ldx) = crp_num / crp_cnt;
+    crp_chnl_util(ldx) = crp_t / sum(min_t) * 2;
 end
 toc
 
@@ -244,7 +227,7 @@ grid on
 % xlim([0 0.36])
 xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
 ylabel('Throughput (packet/sec)','Interpreter','latex','FontSize',17.6)
-title('Pure ALOHA CRP','Interpreter','latex','FontSize',17.6)
+title('First-Last CRP','Interpreter','latex','FontSize',17.6)
 
 figure
 plot(lambda,dly_list,'LineWidth',1)
@@ -253,22 +236,13 @@ grid on
 ylim([0 300])
 xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
 ylabel('Delay (sec)','Interpreter','latex','FontSize',17.6)
-title('Pure ALOHA CRP','Interpreter','latex','FontSize',17.6)
+title('First-Last CRP','Interpreter','latex','FontSize',17.6)
 
 figure
-plot(lambda,crp_len,'LineWidth',1.5)
+plot(lambda,crp_chnl_util,'LineWidth',1.5)
 legend('CRP Propotion','Location','southeast','Interpreter','latex','FontSize',14.4)
 grid on
 % xlim([0 0.36])
 xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
 ylabel('Channel Efficiency','Interpreter','latex','FontSize',17.6)
-title('Pure ALOHA CRP','Interpreter','latex','FontSize',17.6)
-
-figure
-plot(lambda,crp_thrpt_ideal,'LineWidth',1.5)
-legend('CRP Throughput Ideal','Location','southeast','Interpreter','latex','FontSize',14.4)
-grid on
-% xlim([0 0.36])
-xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
-ylabel('Channel Efficiency','Interpreter','latex','FontSize',17.6)
-title('Pure ALOHA CRP','Interpreter','latex','FontSize',17.6)
+title('First-Last CRP','Interpreter','latex','FontSize',17.6)

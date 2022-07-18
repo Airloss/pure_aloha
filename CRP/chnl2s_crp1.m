@@ -1,19 +1,19 @@
 clear
 
 THEATA = 0.99;
-ENDTIME = 2e4;
+ENDTIME = 2e5;
 CHANNEL = 2;
 
 lambda = 0.01:0.01:0.6;
-betaT = 0.6;
+betaT = 0.6468;
 
-thrpt_list = zeros(length(lambda),1);
+sys_thrpt = zeros(length(lambda),1);
 chanl_thrpt = zeros(length(lambda),1);
 dly_list = zeros(length(lambda),1);
 
 crp_thrpt = zeros(length(lambda),1);
 crp_thrpt_ideal = zeros(length(lambda),1);
-crp_len = zeros(length(lambda),1);
+crp_chnl_util = zeros(length(lambda),1);
 crp_invov = zeros(length(lambda),1);
 
 tic
@@ -67,11 +67,7 @@ parfor (ldx = 1:length(lambda),6)
                 blg(idx) = blg(idx) + new_blg;
                 pkt_list(ptr(idx):scs(idx)+blg(idx),:,idx) = sortrows(pkt_list(ptr(idx):scs(idx)+blg(idx),:,idx),1);
             end
-            % idle_t = idle_t + pkt_list(ptr(idx),1) - min_t;
-            % if idle_t < 0
-            %     disp FALSE_IDLE_MINUS
-            %     % return
-            % end
+
             min_t(idx) = pkt_list(ptr(idx),1,idx) + 1;
             sect = sum(pkt_list(ptr(idx):scs(idx)+blg(idx),1,idx) < min_t(idx));
             if sect == 1
@@ -167,11 +163,6 @@ parfor (ldx = 1:length(lambda),6)
                 crp_list(:,1) = crp_list(:,1) + 1;
                 crp_period = crp_period + 1;
             end
-%             if ceil(crp_min_t - crp_start_t) ~= ceil(crp_period)
-%                 disp(crp_min_t - crp_start_t);
-%                 disp(crp_period);
-%                 disp FALSE_CRP_TIME
-%             end
             crp_t = crp_t + crp_min_t - crp_start_t;
 
             if sum(crp_list(:,3) < -1) > 0
@@ -209,11 +200,7 @@ parfor (ldx = 1:length(lambda),6)
                         blg(ii) = blg(ii) + new_blg;
                         pkt_list(ptr(ii):scs(ii)+blg(ii),:,ii) = sortrows(pkt_list(ptr(ii):scs(ii)+blg(ii),:,ii),1);
                     end
-                    % idle_t = idle_t + pkt_list(ptr(ii),1) - min_t;
-                    % if idle_t < 0
-                    %     disp FALSE_IDLE_MINUS
-                    %     % return
-                    % end
+
                     min_t(ii) = pkt_list(ptr(ii),1,ii) + 1;
                     sect = sum(pkt_list(ptr(ii):scs(ii)+blg(ii),1,ii) < min_t(ii));
                     if sect == 1
@@ -258,31 +245,31 @@ parfor (ldx = 1:length(lambda),6)
         end
         mu = betaT ./ max(blg,1);
     end
-    thrpt_list(ldx) = sum(scs ./ min_t) / 3;
+    sys_thrpt(ldx) = sum(scs ./ min_t) / 3;
     chanl_thrpt(ldx) = (sum(scs)-crp_scs) / sum(min_t);
     dly_list(ldx) = sum(dly ./ scs) / 2;
     crp_thrpt(ldx) = crp_scs / sum(min_t) * 2;
     crp_thrpt_ideal(ldx) = crp_scs / crp_t;
-    crp_len(ldx) = crp_t / sum(min_t) * 2;
+    crp_chnl_util(ldx) = crp_t / sum(min_t) * 2;
     crp_invov(ldx) = crp_num / crp_cnt;
 end
 toc
 
-pt = find(thrpt_list == max(thrpt_list));
-disp(thrpt_list(pt));
+pt = find(sys_thrpt == max(sys_thrpt));
+disp(sys_thrpt(pt));
 disp(lambda(pt));
 
 yy = ones(length(lambda),1);
 yy = yy .* 0.184;
 
 figure
-plot(lambda,crp_thrpt,lambda,chanl_thrpt,lambda,thrpt_list,lambda,yy,'--','LineWidth',1.5)
+plot(lambda,crp_thrpt,lambda,chanl_thrpt,lambda,sys_thrpt,lambda,yy,'--','LineWidth',1.5)
 legend('CRP Thrpughput','Channel Throughput','Total Throughput','Location','southeast','Interpreter','latex','FontSize',14.4)
 grid on
 % xlim([0 0.36])
 xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
 ylabel('Throughput (packet/sec)','Interpreter','latex','FontSize',17.6)
-title('Pure ALOHA CRP','Interpreter','latex','FontSize',17.6)
+title('Slotted CRP','Interpreter','latex','FontSize',17.6)
 
 figure
 plot(lambda,dly_list,'LineWidth',1)
@@ -291,22 +278,22 @@ grid on
 ylim([0 300])
 xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
 ylabel('Delay (sec)','Interpreter','latex','FontSize',17.6)
-title('Pure ALOHA CRP','Interpreter','latex','FontSize',17.6)
+title('Slotted CRP','Interpreter','latex','FontSize',17.6)
 
 figure
-plot(lambda,crp_len,'LineWidth',1.5)
+plot(lambda,crp_chnl_util,'LineWidth',1.5)
 legend('CRP Propotion','Location','southeast','Interpreter','latex','FontSize',14.4)
 grid on
 % xlim([0 0.36])
 xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
-ylabel('Channel Efficiency','Interpreter','latex','FontSize',17.6)
-title('Pure ALOHA CRP','Interpreter','latex','FontSize',17.6)
+ylabel('Channel Utilization','Interpreter','latex','FontSize',17.6)
+title('Slotted CRP','Interpreter','latex','FontSize',17.6)
 
 figure
 plot(lambda,crp_thrpt_ideal,'LineWidth',1.5)
-legend('CRP Throughput Ideal','Location','southeast','Interpreter','latex','FontSize',14.4)
+legend('CRP Ideal Throughput','Location','southeast','Interpreter','latex','FontSize',14.4)
 grid on
 % xlim([0 0.36])
 xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
-ylabel('Channel Efficiency','Interpreter','latex','FontSize',17.6)
-title('Pure ALOHA CRP','Interpreter','latex','FontSize',17.6)
+ylabel('Throughput (packet/sec)','Interpreter','latex','FontSize',17.6)
+title('Slotted CRP','Interpreter','latex','FontSize',17.6)
