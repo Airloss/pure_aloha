@@ -1,8 +1,8 @@
 clear
 
 THEATA = 0.99;
-ENDTIME = 2e4;
-CHANNEL = 3;
+ENDTIME = 1e5;
+CHANNEL = 2;
 
 lambda = 0.01:0.01:0.6;
 betaT = 0.6468;
@@ -17,7 +17,7 @@ crp_chnl_util = zeros(length(lambda),1);
 crp_invov = zeros(length(lambda),1);
 
 tic
-for ldx = 1:length(lambda)
+parfor (ldx = 1:length(lambda),6)
     % initialize param & packet list
     num = ceil(1.5 * lambda(ldx) * ENDTIME);
     ptr = ones(CHANNEL,1);
@@ -108,7 +108,7 @@ for ldx = 1:length(lambda)
             crp_idx = find(status == 1);
             crp_flag = 1;
         elseif sum(status_) > 1
-            pkt_list_ = zeros(3,1);
+            pkt_list_ = zeros(CHANNEL,1);
             for jj = 1:CHANNEL
                 pkt_list_(jj) = pkt_list(ptr(jj),1,jj);
             end
@@ -116,7 +116,7 @@ for ldx = 1:length(lambda)
             crp_idx = find(pkt_list_ == min(pkt_list_));
             status_(crp_idx) = 0;
             for kk = 1:CHANNEL
-                if status_(kk) > 0;
+                if status_(kk) > 0
                     pkt_list(ptr(kk):ptr(kk)+blg_end(kk),1,kk) = min_t(kk) + exprnd(1/mu(kk),blg_end(kk)+1,1);
                     pkt_list(ptr(kk):scs(kk)+blg(kk),:,kk) = sortrows(pkt_list(ptr(kk):scs(kk)+blg(kk),:,kk),1);
                 end
@@ -267,6 +267,8 @@ disp(lambda(pt));
 
 yy = ones(length(lambda),1);
 yy = yy .* 0.184;
+
+ftitle = sprintf('%d contention channels',CHANNEL);
 
 figure
 plot(lambda,crp_thrpt,lambda,chanl_thrpt,lambda,sys_thrpt,lambda,yy,'--','LineWidth',1.5)
