@@ -2,9 +2,9 @@ clear
 
 THEATA = 0.99;
 ENDTIME = 1e5;
-betaT = 0.8;
+betaT = 0.6468;
 
-lambda = 0.01:0.01:0.6;
+lambda = 0.02:0.02:0.6;
 
 thrpt_list = zeros(length(lambda),1);
 dly_list = zeros(length(lambda),1);
@@ -29,8 +29,6 @@ parfor (ldx = 1:length(lambda))
     dly = 0;
     cnt = 0;
     min_t = 0;
-    es_blg = 10;
-    ac_blg = 10;
     coll_t = 0;
     idle_t = 0;
     cnt_coll = 0;
@@ -40,7 +38,7 @@ parfor (ldx = 1:length(lambda))
     crp_scs = 0;
     crp_coll = 0;
     prev_end_t = 0;
-    mu = 0.6468 / es_blg;
+    mu = 0.6468 / 2;
 
     pkt_list = zeros(num,3);
     pkt_list(:,1) = cumsum(exprnd(1/lambda(ldx), num, 1));
@@ -197,6 +195,9 @@ parfor (ldx = 1:length(lambda))
                     % return
                 end
                 min_t = pkt_list(ptr,1) + 1;
+                if min_t > crp_min_t
+                    break;
+                end
                 sect = sum(pkt_list(ptr:ptr+blg-1,1) < min_t);
                 if sect == 1
                     scs = scs + 1;
@@ -226,15 +227,18 @@ parfor (ldx = 1:length(lambda))
                         end
                     end
                     coll_t = coll_t + min_t - coll_start_t;
-                    pkt_list(ptr:ptr+blg_end,1) = min_t + exprnd(1/mu,sect,1);
-                    pkt_list(ptr:scs+blg,:) = sortrows(pkt_list(ptr:scs+blg,:),1);
+                    if min_t > crp_min_t
+                        break;
+                    else
+                        pkt_list(ptr:ptr+blg_end,1) = min_t + exprnd(1/mu,sect,1);
+                        pkt_list(ptr:scs+blg,:) = sortrows(pkt_list(ptr:scs+blg,:),1);
+                    end
                 end
                 if sum(pkt_list(:,2) < min_t) - scs ~= blg
                     disp FALSE_BLG2
                     % return
                 end
             end
-            pkt_list(ptr:scs+blg,:) = sortrows(pkt_list(ptr:scs+blg,:),1);
             if sum(pkt_list(:,2) < min_t) - scs ~= blg
                 disp FALSE_BLG1
                 % return
