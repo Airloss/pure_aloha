@@ -1,10 +1,10 @@
 clear
 
 THEATA = 0.99;
-ENDTIME = 2e5;
+ENDTIME = 1e5;
 CHANNEL = 2;
 
-lambda = 0.01:0.01:0.6;
+lambda = 0.01:0.01:0.4;
 betaT = 0.6468;
 
 sys_thrpt = zeros(length(lambda),1);
@@ -102,6 +102,7 @@ parfor (ldx = 1:length(lambda),6)
                 status(idx) = 2;
             end
         end
+        mu = betaT ./ max(blg,1);
         %% CRP procedure
         if sum(status == 2) == 1
             crp_idx = find(status == 2);
@@ -181,6 +182,7 @@ parfor (ldx = 1:length(lambda),6)
 
             %% During CRP
             for ii = 1:2
+                prev_min_t = min_t(ii);
                 while sum(pkt_list(ptr(ii):end,1,ii) < crp_min_t) > 0
                     if blg(ii) == 0
                         pkt_list(ptr(ii),1,ii) = pkt_list(ptr(ii),1,ii) + exprnd(mu(ii),1);
@@ -204,6 +206,7 @@ parfor (ldx = 1:length(lambda),6)
                     min_t(ii) = pkt_list(ptr(ii),1,ii) + 1;
                     sect = sum(pkt_list(ptr(ii):scs(ii)+blg(ii),1,ii) < min_t(ii));
                     if sect == 1
+                        prev_min_t = min_t(ii);
                         scs(ii) = scs(ii) + 1;
                         dly(ii) = dly(ii) + pkt_list(ptr(ii),1,ii) - pkt_list(ptr(ii),2,ii) + 1;
                         pkt_list(ptr(ii),3,ii) = -1;   % column 3 == -1 => scs(ii)
@@ -233,12 +236,15 @@ parfor (ldx = 1:length(lambda),6)
                         end
                         status(ii) = 2;
                         if min_t(ii) > crp_min_t
+                            min_t(ii) = prev_min_t;
                             break;
                         else
+                            min_t(ii) = prev_min_t;
                             pkt_list(ptr(ii):ptr(ii)+blg_end(ii),1,ii) = min_t(ii) + exprnd(1/mu(ii),blg_end(ii)+1,1);
                             pkt_list(ptr(ii):scs(ii)+blg(ii),:,ii) = sortrows(pkt_list(ptr(ii):scs(ii)+blg(ii),:,ii),1);
                         end
                     end
+                    mu = betaT ./ max(blg,1);
                 end
             end
             crp_flag = 0;

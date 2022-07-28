@@ -2,7 +2,7 @@ clear
 
 ENDTIME = 1e5;
 
-lambda = 0.01:0.01:0.2;
+lambda = 0.01:0.01:0.25;
 betaT = 0.5;
 
 thrpt_list = zeros(length(lambda),1);
@@ -59,6 +59,7 @@ parfor (ldx = 1:length(lambda),6)
             pkt_list(ptr,3) = -1;   % column 3 == -1 => scs
             ptr = ptr + 1;
             blg = blg - 1;
+            mu = betaT / max(blg,1);
         else
             coll_start_t = pkt_list(ptr,1);
             blg_end = sect - 1;
@@ -80,6 +81,7 @@ parfor (ldx = 1:length(lambda),6)
                     blg_end = sect - 1;
                 end
             end
+            mu = betaT / max(blg,1);
             pkt_list(ptr:ptr+blg_end,1) = min_t + exprnd(1/mu,sect,1);
             pkt_list(ptr:scs+blg,:) = sortrows(pkt_list(ptr:scs+blg,:),1);
         end
@@ -93,7 +95,7 @@ parfor (ldx = 1:length(lambda),6)
             % return
         end
         prev_end_t = min_t;
-        mu = betaT / max(ac_blg,1); % a temp setting
+%         mu = betaT / max(ac_blg,1);
     end
     thrpt_list(ldx) = scs / min_t;
     dly_list(ldx) = dly / scs;
@@ -102,6 +104,7 @@ toc
 
 pt = find(thrpt_list == max(thrpt_list));
 disp(thrpt_list(pt));
+disp(lambda(pt));
 
 figure
 plot(lambda,thrpt_list,'LineWidth',1)

@@ -271,12 +271,12 @@ parfor (ldx = 1:length(lambda),6)
                             pkt_list(ptr(jdx):scs(jdx)+blg(jdx),:,jdx) = sortrows(pkt_list(ptr(jdx):scs(jdx)+blg(jdx),:,jdx),1);
                         end
                     end
-                    mu = betaT ./ max(blg,0.01);
+                    mu = betaT ./ max(blg,1);
                 end
             end
             crp_flag = 0;
         end
-        mu = betaT ./ max(blg,0.01);
+        mu = betaT ./ max(blg,1);
     end
     if sum(chnl_scs) + crp_scs ~= sum(scs)
         disp(ldx);
@@ -300,7 +300,7 @@ yy = yy .* 0.184;
 
 ftitle = sprintf('%d contention channels S-ALOHA',CHANNEL);
 
-xaxis_ = lambda;
+xaxis_ = lambda * 2 / 3;
 figure
 plot(xaxis_,crp_thrpt,xaxis_,chanl_thrpt,xaxis_,sys_thrpt,xaxis_,yy,'--','LineWidth',1.5)
 legend('CRP Thrpughput','Channel Throughput','Total Throughput','Location','northeast','Interpreter','latex','FontSize',14.4)

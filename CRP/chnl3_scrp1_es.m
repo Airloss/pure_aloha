@@ -89,7 +89,7 @@ parfor (ldx = 1:length(lambda),6)
                 if l_recur(idx) < 0
                     disp FALSE_L_RECUR_1
                 end
-                es_blg(idx) = max(es_blg(idx) * exp(-mu(idx) * idle_t(idx)) + l_recur(idx),0.01);
+                es_blg(idx) = max(es_blg(idx) * exp(-mu(idx) * idle_t(idx)) + l_recur(idx),1);
                 blg_diff(idx) = blg_diff(idx) + abs(es_blg(idx) - blg(idx));
                 scs(idx) = scs(idx) + 1;
                 chnl_scs(idx) = chnl_scs(idx) + 1;
@@ -131,7 +131,7 @@ parfor (ldx = 1:length(lambda),6)
                 if l_recur(idx) < 0
                     disp FALSE_L_RECUR_2
                 end
-                es_blg(idx) = max(1 + es_blg(idx) * exp(-mu(idx) * idle_t(idx)) + l_recur(idx) * (min_t(idx) - coll_start_t),0.01);
+                es_blg(idx) = max(1 + es_blg(idx) * exp(-mu(idx) * idle_t(idx)) + l_recur(idx) * (min_t(idx) - coll_start_t),1);
                 blg_diff(idx) = blg_diff(idx) + abs(es_blg(idx) - blg(idx));
             end
         end
@@ -281,7 +281,7 @@ parfor (ldx = 1:length(lambda),6)
                         if l_recur(jdx) < 0
                             disp FALSE_L_RECUR_3
                         end
-                        es_blg(jdx) = max(es_blg(jdx) * exp(-mu(jdx) * idle_t(jdx)) + l_recur(jdx),0.01);
+                        es_blg(jdx) = max(es_blg(jdx) * exp(-mu(jdx) * idle_t(jdx)) + l_recur(jdx),1);
                         blg_diff(jdx) = blg_diff(jdx) + (es_blg(jdx) - blg(jdx));
                     else
                         coll_start_t = pkt_list(ptr(jdx),1,jdx);
@@ -308,7 +308,7 @@ parfor (ldx = 1:length(lambda),6)
                         if l_recur(jdx) < 0
                             disp FALSE_L_RECUR_4
                         end
-                        es_blg(jdx) = max(1 + es_blg(jdx) * exp(-mu(jdx) * idle_t(jdx)) + l_recur(jdx) * (min_t(jdx) - coll_start_t),0.01);
+                        es_blg(jdx) = max(1 + es_blg(jdx) * exp(-mu(jdx) * idle_t(jdx)) + l_recur(jdx) * (min_t(jdx) - coll_start_t),1);
                         blg_diff(jdx) = blg_diff(jdx) + (es_blg(jdx) - blg(jdx));
                         status(jdx) = 1;
                         if min_t(jdx) > crp_min_t
