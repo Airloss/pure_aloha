@@ -1,6 +1,6 @@
 clear
 
-ENDTIME = 1e6;
+ENDTIME = 1e5;
 
 lambda = 0.01:0.01:0.2;
 betaT = 0.5;
