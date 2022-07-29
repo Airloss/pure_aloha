@@ -1,10 +1,10 @@
 clear
 
 THEATA = 0.99;
-ENDTIME = 1e5;
+ENDTIME = 3e5;
 CHANNEL = 2;
 
-lambda = 0.02:0.02:0.4;
+lambda = 0.02:0.02:0.42;
 betaT = 0.6468;
 
 sys_thrpt = zeros(length(lambda),1);
@@ -33,7 +33,7 @@ parfor (ldx = 1:length(lambda),6)
 
     status = blg;
     blg_end = blg;
-    l_recur = blg;
+    l_recur = ptr .* 0.2;
 
     mu = blg;
     es_blg = blg;
@@ -90,7 +90,7 @@ parfor (ldx = 1:length(lambda),6)
                     disp FALSE_L_RECUR_1
                 end
                 es_blg(idx) = max(es_blg(idx) * exp(-mu(idx) * idle_t(idx)) + l_recur(idx),1);
-                blg_diff(idx) = blg_diff(idx) + abs(es_blg(idx) - blg(idx));
+                blg_diff(idx) = blg_diff(idx) + (es_blg(idx) - blg(idx));
                 scs(idx) = scs(idx) + 1;
                 chnl_scs(idx) = chnl_scs(idx) + 1;
                 dly(idx) = dly(idx) + pkt_list(ptr(idx),1,idx) - pkt_list(ptr(idx),2,idx) + 1;
@@ -132,7 +132,7 @@ parfor (ldx = 1:length(lambda),6)
                     disp FALSE_L_RECUR_2
                 end
                 es_blg(idx) = max(1 + es_blg(idx) * exp(-mu(idx) * idle_t(idx)) + l_recur(idx) * (min_t(idx) - coll_start_t),1);
-                blg_diff(idx) = blg_diff(idx) + abs(es_blg(idx) - blg(idx));
+                blg_diff(idx) = blg_diff(idx) + (es_blg(idx) - blg(idx));
             end
         end
         mu = betaT ./ es_blg;
@@ -384,7 +384,7 @@ figure
 plot(xaxis_,blg_list,'LineWidth',1.5)
 legend(ftitle,'Location','southeast','Interpreter','latex','FontSize',14.4)
 grid on
-% xlim([0 0.36])
+xlim([0 0.22])
 xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
 ylabel('Backoff Difference','Interpreter','latex','FontSize',17.6)
 title('Slotted CRP','Interpreter','latex','FontSize',17.6)

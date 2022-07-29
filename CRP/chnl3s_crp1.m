@@ -1,10 +1,9 @@
 clear
 
-THEATA = 0.99;
-ENDTIME = 1e5;
+ENDTIME = 2e5;
 CHANNEL = 2;
 
-lambda = 0.02:0.02:0.4;
+lambda = 0.02:0.02:0.42;
 betaT = 0.6468;
 
 sys_thrpt = zeros(length(lambda),1);

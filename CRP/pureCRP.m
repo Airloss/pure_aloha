@@ -64,7 +64,7 @@ parfor (ldx = 1:length(lambda),6)
         if sect == 1
             lambda_recur = THEATA * lambda_recur + (1-THEATA) / (min_t - prev_end_t);
             es_blg = max(es_blg * exp(-mu * idle_t) + lambda_recur,1);
-            blg_diff = blg_diff + blg - es_blg;
+            blg_diff = blg_diff + es_blg - blg;
             scs = scs + 1;
             dly = dly + pkt_list(ptr,1) - pkt_list(ptr,2) + 1;
             pkt_list(ptr,3) = -1;   % column 3 == -1 => scs
@@ -152,7 +152,7 @@ parfor (ldx = 1:length(lambda),6)
             coll_t = min_t - coll_start_t;
             lambda_recur = lambda_recur * THEATA + (1 - THEATA) * crp_scs / (min_t - prev_end_t);
             es_blg = max(1 + es_blg * exp(-mu * idle_t) + lambda_recur * coll_t - crp_scs,1);
-            blg_diff = blg_diff + blg - es_blg;
+            blg_diff = blg_diff + es_blg - blg;
             if sum(crp_list(:,3)>=0) > 0
                 crp_list(crp_list(:,3)>=0,1) = crp_min_t + exprnd(1/mu,sum(crp_list(:,3)>=0),1);
                 crp_list(crp_list(:,3)>=0,3) = 1;
