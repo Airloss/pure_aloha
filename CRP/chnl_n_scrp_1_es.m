@@ -1,6 +1,7 @@
 clear
 
-ENDTIME = 2e5;
+THEATA = 0.99;
+ENDTIME = 1e5;
 CHANNEL = 2;
 
 lambda = 0.02:0.02:0.42;
@@ -9,6 +10,7 @@ betaT = 0.6468;
 sys_thrpt = zeros(length(lambda),1);
 chanl_thrpt = zeros(length(lambda),1);
 dly_list = zeros(length(lambda),1);
+blg_list = zeros(length(lambda),1);
 
 crp_thrpt = zeros(length(lambda),1);
 crp_thrpt_ideal = zeros(length(lambda),1);
@@ -21,16 +23,25 @@ parfor (ldx = 1:length(lambda),6)
     num = ceil(1.5 * lambda(ldx) * ENDTIME);
     ptr = ones(CHANNEL,1);
     blg = zeros(CHANNEL,1);
+    
     scs = blg;
     dly = blg;
     cnt = blg;
     min_t = blg;
+    idle_t = blg;
+    prev_end_t = blg;
+
     status = blg;
     blg_end = blg;
+    l_recur = ptr .* 0.2;
+
     mu = blg;
+    es_blg = blg;
     mu(1:end) = 0.6468 / 2;
+    es_blg(1:end) = 2;
     chnl_scs = scs;
 
+    blg_diff = blg;
     crp_flag = 0;
     wait_flag = blg;
 
@@ -49,6 +60,7 @@ parfor (ldx = 1:length(lambda),6)
     while sum(min_t <= ENDTIME) > 0
         %% Before Transmission
         for idx = 1:CHANNEL
+            cnt(idx) = cnt(idx) + 1;
             if blg(idx) == 0
                 pkt_list(ptr(idx),1,idx) = pkt_list(ptr(idx),1,idx) + exprnd(mu(idx),1);
                 pkt_list(ptr(idx),3,idx) = 1;    % stack in backlog list
@@ -67,10 +79,19 @@ parfor (ldx = 1:length(lambda),6)
                 blg(idx) = blg(idx) + new_blg;
                 pkt_list(ptr(idx):scs(idx)+blg(idx),:,idx) = sortrows(pkt_list(ptr(idx):scs(idx)+blg(idx),:,idx),1);
             end
-
+            idle_t(idx) = pkt_list(ptr(idx),1,idx) - min_t(idx);
+            if idle_t(idx) < 0
+                disp FALSE_IDLE_T_1
+            end
             min_t(idx) = pkt_list(ptr(idx),1,idx) + 1;
             sect = sum(pkt_list(ptr(idx):scs(idx)+blg(idx),1,idx) < min_t(idx));
             if sect == 1
+                l_recur(idx) = THEATA * l_recur(idx) + (1 - THEATA) / (min_t(idx) - prev_end_t(idx));
+                if l_recur(idx) < 0
+                    disp FALSE_L_RECUR_1
+                end
+                es_blg(idx) = max(es_blg(idx) * exp(-mu(idx) * idle_t(idx)) + l_recur(idx),1);
+                blg_diff(idx) = blg_diff(idx) + (es_blg(idx) - blg(idx));
                 scs(idx) = scs(idx) + 1;
                 chnl_scs(idx) = chnl_scs(idx) + 1;
                 dly(idx) = dly(idx) + pkt_list(ptr(idx),1,idx) - pkt_list(ptr(idx),2,idx) + 1;
@@ -81,6 +102,9 @@ parfor (ldx = 1:length(lambda),6)
             else
                 coll_start_t = pkt_list(ptr(idx),1,idx);
                 blg_end(idx) = sect - 1;
+                if sect < 1
+                    disp FALSE_SECT_1
+                end
                 % collision period
                 while blg_end(idx) > 0 && min_t(idx) < ENDTIME
                     min_t(idx) = pkt_list(ptr(idx)+blg_end(idx),1,idx) + 1;
@@ -100,10 +124,20 @@ parfor (ldx = 1:length(lambda),6)
                         blg_end(idx) = sect - 1;
                     end
                 end
+                if blg_end(idx) < 1
+                    disp FLASE_BLGEND
+                end
                 status(idx) = 1;
+                l_recur(idx) = THEATA * l_recur(idx);
+                if l_recur(idx) < 0
+                    disp FALSE_L_RECUR_2
+                end
+                es_blg(idx) = max(1 + es_blg(idx) * exp(-mu(idx) * idle_t(idx)) + l_recur(idx) * (min_t(idx) - coll_start_t),1);
+                blg_diff(idx) = blg_diff(idx) + (es_blg(idx) - blg(idx));
             end
         end
-        mu = betaT ./ max(blg,1);
+        mu = betaT ./ es_blg;
+        prev_end_t = min_t;
         %% CRP procedure
         status_ = status == 1;
         if sum(status_) == 1
@@ -131,6 +165,7 @@ parfor (ldx = 1:length(lambda),6)
             crp_start_t = min_t(crp_idx);
             crp_list = pkt_list(ptr(crp_idx):ptr(crp_idx)+blg_end(crp_idx),:,crp_idx);
             if sum(crp_list(:,3) == 1) <= 1
+                disp('coll');
                 disp(pkt_list(ptr(crp_idx):ptr(crp_idx)+blg_end(crp_idx),:,crp_idx));
                 disp FALSE_COLL
             end
@@ -205,6 +240,7 @@ parfor (ldx = 1:length(lambda),6)
             for jdx = 1:CHANNEL
                 prev_min_t = min_t(jdx);
                 while sum(pkt_list(ptr(jdx):end,1,jdx) < crp_min_t) > 0
+                    cnt(jdx) = cnt(jdx) + 1;
                     if blg(jdx) == 0
                         pkt_list(ptr(jdx),1,jdx) = pkt_list(ptr(jdx),1,jdx) + exprnd(mu(jdx),1);
                         pkt_list(ptr(jdx),3,jdx) = 1;    % stack in backlog list
@@ -223,12 +259,16 @@ parfor (ldx = 1:length(lambda),6)
                         blg(jdx) = blg(jdx) + new_blg;
                         pkt_list(ptr(jdx):scs(jdx)+blg(jdx),:,jdx) = sortrows(pkt_list(ptr(jdx):scs(jdx)+blg(jdx),:,jdx),1);
                     end
-
+                    idle_t(jdx) = pkt_list(ptr(jdx),1,jdx) - min_t(jdx);
+                    if idle_t(idx) < 0
+                        disp FALSE_IDLE_T_2
+                    end
                     min_t(jdx) = pkt_list(ptr(jdx),1,jdx) + 1;
                     if min_t(jdx) > crp_min_t
                         min_t(jdx) = prev_min_t;
                         break;
                     end
+
                     sect = sum(pkt_list(ptr(jdx):scs(jdx)+blg(jdx),1,jdx) < min_t(jdx));
                     if sect == 1
                         prev_min_t = min_t(jdx);
@@ -239,6 +279,12 @@ parfor (ldx = 1:length(lambda),6)
                         ptr(jdx) = ptr(jdx) + 1;
                         blg(jdx) = blg(jdx) - 1;
                         status(jdx) = -1;
+                        l_recur(jdx) = THEATA * l_recur(jdx) + (1 - THEATA) / (min_t(jdx) - prev_end_t(jdx));
+                        if l_recur(jdx) < 0
+                            disp FALSE_L_RECUR_3
+                        end
+                        es_blg(jdx) = max(es_blg(jdx) * exp(-mu(jdx) * idle_t(jdx)) + l_recur(jdx),1);
+                        blg_diff(jdx) = blg_diff(jdx) + (es_blg(jdx) - blg(jdx));
                     else
                         coll_start_t = pkt_list(ptr(jdx),1,jdx);
                         blg_end(jdx) = sect - 1;
@@ -260,6 +306,12 @@ parfor (ldx = 1:length(lambda),6)
                                 blg_end(jdx) = sect - 1;
                             end
                         end
+                        l_recur(jdx) = THEATA * l_recur(jdx);
+                        if l_recur(jdx) < 0
+                            disp FALSE_L_RECUR_4
+                        end
+                        es_blg(jdx) = max(1 + es_blg(jdx) * exp(-mu(jdx) * idle_t(jdx)) + l_recur(jdx) * (min_t(jdx) - coll_start_t),1);
+                        blg_diff(jdx) = blg_diff(jdx) + (es_blg(jdx) - blg(jdx));
                         status(jdx) = 1;
                         if min_t(jdx) > crp_min_t
                             min_t(jdx) = prev_min_t;
@@ -270,12 +322,14 @@ parfor (ldx = 1:length(lambda),6)
                             pkt_list(ptr(jdx):scs(jdx)+blg(jdx),:,jdx) = sortrows(pkt_list(ptr(jdx):scs(jdx)+blg(jdx),:,jdx),1);
                         end
                     end
-                    mu = betaT ./ max(blg,1);
+                    mu(jdx) = betaT / es_blg(jdx);
+                    prev_end_t(jdx) = min_t(jdx);
                 end
             end
             crp_flag = 0;
         end
-        mu = betaT ./ max(blg,1);
+        prev_end_t = min_t;
+        mu = betaT ./ es_blg;
     end
     if sum(chnl_scs) + crp_scs ~= sum(scs)
         disp(ldx);
@@ -287,6 +341,7 @@ parfor (ldx = 1:length(lambda),6)
     crp_thrpt_ideal(ldx) = crp_scs / crp_t;
     crp_chnl_util(ldx) = crp_t / sum(min_t) * CHANNEL;
     crp_invov(ldx) = crp_num / crp_cnt;
+    blg_list(ldx) = mean(blg_diff ./ cnt);
 end
 toc
 
@@ -325,6 +380,15 @@ grid on
 % xlim([0 0.36])
 xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
 ylabel('Channel Utilization','Interpreter','latex','FontSize',17.6)
+title('Slotted CRP','Interpreter','latex','FontSize',17.6)
+
+figure
+plot(xaxis_,blg_list,'LineWidth',1.5)
+legend(ftitle,'Location','southeast','Interpreter','latex','FontSize',14.4)
+grid on
+ylim([-100 10])
+xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
+ylabel('Backoff Difference','Interpreter','latex','FontSize',17.6)
 title('Slotted CRP','Interpreter','latex','FontSize',17.6)
 
 % figure

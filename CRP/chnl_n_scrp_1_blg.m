@@ -1,10 +1,10 @@
 clear
 
 THEATA = 0.99;
-ENDTIME = 3e5;
+ENDTIME = 1e5;
 CHANNEL = 2;
 
-lambda = 0.02:0.02:0.42;
+lambda = 0.36;
 betaT = 0.6468;
 
 sys_thrpt = zeros(length(lambda),1);
@@ -18,7 +18,7 @@ crp_chnl_util = zeros(length(lambda),1);
 crp_invov = zeros(length(lambda),1);
 
 tic
-parfor (ldx = 1:length(lambda),6)
+for ldx = 1:length(lambda)
     % initialize param & packet list
     num = ceil(1.5 * lambda(ldx) * ENDTIME);
     ptr = ones(CHANNEL,1);
@@ -41,7 +41,7 @@ parfor (ldx = 1:length(lambda),6)
     es_blg(1:end) = 2;
     chnl_scs = scs;
 
-    blg_diff = blg;
+    blg_diff = zeros(CHANNEL,num);
     crp_flag = 0;
     wait_flag = blg;
 
@@ -60,6 +60,7 @@ parfor (ldx = 1:length(lambda),6)
     while sum(min_t <= ENDTIME) > 0
         %% Before Transmission
         for idx = 1:CHANNEL
+            cnt(idx) = cnt(idx) + 1;
             if blg(idx) == 0
                 pkt_list(ptr(idx),1,idx) = pkt_list(ptr(idx),1,idx) + exprnd(mu(idx),1);
                 pkt_list(ptr(idx),3,idx) = 1;    % stack in backlog list
@@ -90,7 +91,7 @@ parfor (ldx = 1:length(lambda),6)
                     disp FALSE_L_RECUR_1
                 end
                 es_blg(idx) = max(es_blg(idx) * exp(-mu(idx) * idle_t(idx)) + l_recur(idx),1);
-                blg_diff(idx) = blg_diff(idx) + (es_blg(idx) - blg(idx));
+                blg_diff(idx,cnt(idx)) = (es_blg(idx) - blg(idx));
                 scs(idx) = scs(idx) + 1;
                 chnl_scs(idx) = chnl_scs(idx) + 1;
                 dly(idx) = dly(idx) + pkt_list(ptr(idx),1,idx) - pkt_list(ptr(idx),2,idx) + 1;
@@ -132,7 +133,7 @@ parfor (ldx = 1:length(lambda),6)
                     disp FALSE_L_RECUR_2
                 end
                 es_blg(idx) = max(1 + es_blg(idx) * exp(-mu(idx) * idle_t(idx)) + l_recur(idx) * (min_t(idx) - coll_start_t),1);
-                blg_diff(idx) = blg_diff(idx) + (es_blg(idx) - blg(idx));
+                blg_diff(idx,cnt(idx)) = (es_blg(idx) - blg(idx));
             end
         end
         mu = betaT ./ es_blg;
@@ -237,6 +238,7 @@ parfor (ldx = 1:length(lambda),6)
 
             %% During CRP
             for jdx = 1:CHANNEL
+                cnt(jdx) = cnt(jdx) + 1;
                 prev_min_t = min_t(jdx);
                 while sum(pkt_list(ptr(jdx):end,1,jdx) < crp_min_t) > 0
                     if blg(jdx) == 0
@@ -282,7 +284,7 @@ parfor (ldx = 1:length(lambda),6)
                             disp FALSE_L_RECUR_3
                         end
                         es_blg(jdx) = max(es_blg(jdx) * exp(-mu(jdx) * idle_t(jdx)) + l_recur(jdx),1);
-                        blg_diff(jdx) = blg_diff(jdx) + (es_blg(jdx) - blg(jdx));
+                        blg_diff(jdx,cnt(jdx)) = (es_blg(jdx) - blg(jdx));
                     else
                         coll_start_t = pkt_list(ptr(jdx),1,jdx);
                         blg_end(jdx) = sect - 1;
@@ -309,7 +311,7 @@ parfor (ldx = 1:length(lambda),6)
                             disp FALSE_L_RECUR_4
                         end
                         es_blg(jdx) = max(1 + es_blg(jdx) * exp(-mu(jdx) * idle_t(jdx)) + l_recur(jdx) * (min_t(jdx) - coll_start_t),1);
-                        blg_diff(jdx) = blg_diff(jdx) + (es_blg(jdx) - blg(jdx));
+                        blg_diff(jdx,cnt(jdx)) = (es_blg(jdx) - blg(jdx));
                         status(jdx) = 1;
                         if min_t(jdx) > crp_min_t
                             min_t(jdx) = prev_min_t;
@@ -339,7 +341,7 @@ parfor (ldx = 1:length(lambda),6)
     crp_thrpt_ideal(ldx) = crp_scs / crp_t;
     crp_chnl_util(ldx) = crp_t / sum(min_t) * CHANNEL;
     crp_invov(ldx) = crp_num / crp_cnt;
-    blg_list(ldx) = mean(blg_diff);
+%     blg_list(ldx) = mean(blg_diff);
 end
 toc
 
@@ -351,49 +353,20 @@ yy = ones(length(lambda),1);
 yy = yy .* 0.184;
 
 ftitle = sprintf('%d contention channels S-ALOHA',CHANNEL);
-
 xaxis_ = lambda * 2 / 3;
-figure
-plot(xaxis_,crp_thrpt,xaxis_,chanl_thrpt,xaxis_,sys_thrpt,xaxis_,yy,'--','LineWidth',1.5)
-legend('CRP Thrpughput','Channel Throughput','Total Throughput','Location','northeast','Interpreter','latex','FontSize',14.4)
-grid on
-% xlim([0 0.36])
-xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
-ylabel('Throughput (packet/sec)','Interpreter','latex','FontSize',17.6)
-title(ftitle,'Interpreter','latex','FontSize',17.6)
 
 figure
-plot(xaxis_,dly_list,'LineWidth',1)
-legend('Delay','Location','northwest','Interpreter','latex','FontSize',14.4)
-grid on
-ylim([0 300])
-xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
-ylabel('Delay (sec)','Interpreter','latex','FontSize',17.6)
-title('Slotted CRP','Interpreter','latex','FontSize',17.6)
-
-figure
-plot(xaxis_,crp_chnl_util,'LineWidth',1.5)
+plot(1:cnt(1),blg_diff(1,1:cnt(1)),'LineWidth',1.5)
 legend(ftitle,'Location','southeast','Interpreter','latex','FontSize',14.4)
 grid on
-% xlim([0 0.36])
-xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
-ylabel('Channel Utilization','Interpreter','latex','FontSize',17.6)
-title('Slotted CRP','Interpreter','latex','FontSize',17.6)
-
-figure
-plot(xaxis_,blg_list,'LineWidth',1.5)
-legend(ftitle,'Location','southeast','Interpreter','latex','FontSize',14.4)
-grid on
-xlim([0 0.22])
 xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
 ylabel('Backoff Difference','Interpreter','latex','FontSize',17.6)
 title('Slotted CRP','Interpreter','latex','FontSize',17.6)
 
-% figure
-% plot(xaxis_,crp_thrpt_ideal,'LineWidth',1.5)
-% legend('CRP Ideal Throughput','Location','southeast','Interpreter','latex','FontSize',14.4)
-% grid on
-% % xlim([0 0.36])
-% xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
-% ylabel('Throughput (packet/sec)','Interpreter','latex','FontSize',17.6)
-% title('Slotted CRP','Interpreter','latex','FontSize',17.6)
+figure
+plot(1:cnt(2),blg_diff(2,1:cnt(2)),'LineWidth',1.5)
+legend(ftitle,'Location','southeast','Interpreter','latex','FontSize',14.4)
+grid on
+xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
+ylabel('Backoff Difference','Interpreter','latex','FontSize',17.6)
+title('Slotted CRP','Interpreter','latex','FontSize',17.6)
