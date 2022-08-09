@@ -5,7 +5,7 @@ CHANNEL = 2;
 
 lambda = 0.02:0.02:0.42;
 betaT = 0.6468;
-crp_mu = 0.36;
+crp_mu = 0.25;
 
 sys_thrpt = zeros(length(lambda),1);
 chanl_thrpt = zeros(length(lambda),1);
@@ -145,7 +145,6 @@ parfor (ldx = 1:length(lambda),6)
                     scs(crp_idx) = scs(crp_idx) + 1;
                     crp_scs = crp_scs + 1;
                     dly(crp_idx) = dly(crp_idx) + crp_list(ic,1) - crp_list(ic,2) + 1;
-                    blg(crp_idx) = blg(crp_idx) - 1;
                     crp_min_t = crp_list(ic,1) + 1;
                 else
                     crp_trans_idx = crp_list(:,3) == 1;
@@ -157,7 +156,6 @@ parfor (ldx = 1:length(lambda),6)
                         crp_scs = crp_scs + 1;
                         dly(crp_idx) = dly(crp_idx) + crp_trans_list(1,1) - crp_trans_list(1,2) + 1;
                         crp_trans_list(1,3) = -1;
-                        blg(crp_idx) = blg(crp_idx) - 1;
                         crp_trans_list(2:end,1) = crp_trans_list(1,1) + 1;
                     else
                         crp_sect_num = crp_sect - 1;
