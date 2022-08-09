@@ -37,8 +37,8 @@ parfor (ldx = 1:length(lambda),6)
 
     mu = blg;
     es_blg = blg;
-    mu(1:end) = 0.6468 / 2;
-    es_blg(1:end) = 2;
+    mu(1:end) = betaT / 2;
+    es_blg(1:end) = 1;
     chnl_scs = scs;
 
     blg_diff = blg;
@@ -165,7 +165,6 @@ parfor (ldx = 1:length(lambda),6)
             crp_start_t = min_t(crp_idx);
             crp_list = pkt_list(ptr(crp_idx):ptr(crp_idx)+blg_end(crp_idx),:,crp_idx);
             if sum(crp_list(:,3) == 1) <= 1
-                disp('coll');
                 disp(pkt_list(ptr(crp_idx):ptr(crp_idx)+blg_end(crp_idx),:,crp_idx));
                 disp FALSE_COLL
             end
@@ -335,11 +334,11 @@ parfor (ldx = 1:length(lambda),6)
         disp(ldx);
     end
     sys_thrpt(ldx) = sum(scs ./ min_t) / (CHANNEL+1);
-    chanl_thrpt(ldx) = sum(chnl_scs ./ min_t) / CHANNEL;
-    dly_list(ldx) = sum(dly ./ scs) / CHANNEL;
-    crp_thrpt(ldx) = crp_scs / sum(min_t) * CHANNEL;
+    chanl_thrpt(ldx) = mean(chnl_scs ./ min_t);
+    dly_list(ldx) = mean(dly ./ scs);
+    crp_thrpt(ldx) = crp_scs / mean(min_t);
     crp_thrpt_ideal(ldx) = crp_scs / crp_t;
-    crp_chnl_util(ldx) = crp_t / sum(min_t) * CHANNEL;
+    crp_chnl_util(ldx) = crp_t / mean(min_t);
     crp_invov(ldx) = crp_num / crp_cnt;
     blg_list(ldx) = mean(blg_diff ./ cnt);
 end
@@ -357,7 +356,7 @@ ftitle = sprintf('%d contention channels S-ALOHA',CHANNEL);
 xaxis_ = lambda * 2 / 3;
 figure
 plot(xaxis_,crp_thrpt,xaxis_,chanl_thrpt,xaxis_,sys_thrpt,xaxis_,yy,'--','LineWidth',1.5)
-legend('CRP Thrpughput','Channel Throughput','Total Throughput','Location','northeast','Interpreter','latex','FontSize',14.4)
+legend('CRP Thrpughput','Channel Throughput','Total Throughput','Location','southeast','Interpreter','latex','FontSize',14.4)
 grid on
 % xlim([0 0.36])
 xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
@@ -386,7 +385,7 @@ figure
 plot(xaxis_,blg_list,'LineWidth',1.5)
 legend(ftitle,'Location','southeast','Interpreter','latex','FontSize',14.4)
 grid on
-ylim([-100 10])
+% ylim([-100 10])
 xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
 ylabel('Backoff Difference','Interpreter','latex','FontSize',17.6)
 title('Slotted CRP','Interpreter','latex','FontSize',17.6)

@@ -28,7 +28,7 @@ parfor (ldx = 1:length(lambda),6)
     status = blg;
     blg_end = blg;
     mu = blg;
-    mu(1:end) = 0.6468 / 2;
+    mu(1:end) = betaT / 2;
     chnl_scs = scs;
 
     crp_flag = 0;
@@ -281,11 +281,11 @@ parfor (ldx = 1:length(lambda),6)
         disp(ldx);
     end
     sys_thrpt(ldx) = sum(scs ./ min_t) / (CHANNEL+1);
-    chanl_thrpt(ldx) = sum(chnl_scs ./ min_t) / CHANNEL;
-    dly_list(ldx) = sum(dly ./ scs) / CHANNEL;
-    crp_thrpt(ldx) = crp_scs / sum(min_t) * CHANNEL;
+    chanl_thrpt(ldx) = mean(chnl_scs ./ min_t);
+    dly_list(ldx) = mean(dly ./ scs);
+    crp_thrpt(ldx) = crp_scs / mean(min_t);
     crp_thrpt_ideal(ldx) = crp_scs / crp_t;
-    crp_chnl_util(ldx) = crp_t / sum(min_t) * CHANNEL;
+    crp_chnl_util(ldx) = crp_t / mean(min_t);
     crp_invov(ldx) = crp_num / crp_cnt;
 end
 toc
