@@ -1,6 +1,6 @@
 clear
 
-ENDTIME = 1e5;
+ENDTIME = 1e6;
 CHANNEL = 2;
 
 lambda = 0.02:0.02:0.42;
@@ -32,7 +32,6 @@ parfor (ldx = 1:length(lambda),6)
     chnl_scs = scs;
 
     crp_flag = 0;
-    wait_flag = blg;
 
     crp_t = 0;
     crp_cnt = 0;
@@ -131,7 +130,6 @@ parfor (ldx = 1:length(lambda),6)
             crp_start_t = min_t(crp_idx);
             crp_list = pkt_list(ptr(crp_idx):ptr(crp_idx)+blg_end(crp_idx),:,crp_idx);
             if sum(crp_list(:,3) == 1) <= 1
-                disp(pkt_list(ptr(crp_idx):ptr(crp_idx)+blg_end(crp_idx),:,crp_idx));
                 disp FALSE_COLL
             end
             crp_min_t = 0;
@@ -298,11 +296,11 @@ yy = ones(length(lambda),1);
 yy = yy .* 0.184;
 
 ftitle = sprintf('%d contention channels S-ALOHA',CHANNEL);
-
 xaxis_ = lambda * 2 / 3;
+
 figure
 plot(xaxis_,crp_thrpt,xaxis_,chanl_thrpt,xaxis_,sys_thrpt,xaxis_,yy,'--','LineWidth',1.5)
-legend('CRP Thrpughput','Channel Throughput','Total Throughput','Location','northeast','Interpreter','latex','FontSize',14.4)
+legend('CRP Thrpughput','Channel Throughput','Total Throughput','Location','southeast','Interpreter','latex','FontSize',14.4)
 grid on
 % xlim([0 0.36])
 xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
@@ -316,7 +314,7 @@ grid on
 ylim([0 300])
 xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
 ylabel('Delay (sec)','Interpreter','latex','FontSize',17.6)
-title('Slotted CRP','Interpreter','latex','FontSize',17.6)
+title('Slotted ALOHA CRP','Interpreter','latex','FontSize',17.6)
 
 figure
 plot(xaxis_,crp_chnl_util,'LineWidth',1.5)
@@ -325,7 +323,7 @@ grid on
 % xlim([0 0.36])
 xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
 ylabel('Channel Utilization','Interpreter','latex','FontSize',17.6)
-title('Slotted CRP','Interpreter','latex','FontSize',17.6)
+title('Slotted ALOHA CRP','Interpreter','latex','FontSize',17.6)
 
 % figure
 % plot(xaxis_,crp_thrpt_ideal,'LineWidth',1.5)

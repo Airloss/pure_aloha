@@ -1,7 +1,7 @@
 clear
 
 THEATA = 0.99;
-ENDTIME = 1e5;
+ENDTIME = 1e6;
 CHANNEL = 2;
 
 lambda = 0.02:0.02:0.42;
@@ -43,7 +43,6 @@ parfor (ldx = 1:length(lambda),6)
 
     blg_diff = blg;
     crp_flag = 0;
-    wait_flag = blg;
 
     crp_t = 0;
     crp_cnt = 0;
