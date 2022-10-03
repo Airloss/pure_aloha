@@ -49,14 +49,14 @@ parfor (ldx = 1:length(lambda),6)
         %% Before Transmission
         for idx = 1:CHANNEL
             if blg(idx) == 0
-                pkt_list(ptr(idx),1,idx) = pkt_list(ptr(idx),1,idx) + exprnd(mu(idx),1);
+                pkt_list(ptr(idx),1,idx) = pkt_list(ptr(idx),1,idx) + BEB(pkt_list(ptr(idx),3,idx));
                 pkt_list(ptr(idx),3,idx) = 1;    % stack in backlog list
                 blg(idx) = 1;
             end
             min_t_temp = pkt_list(ptr(idx),1,idx) + 1;    % packet length equals 1
             new_pkt = sum(pkt_list(ptr(idx)+blg(idx):end,1,idx) < min_t_temp);
             if new_pkt > 0
-                bof = exprnd(1/mu(idx), new_pkt, 1);
+                bof = 1 + 2 ^ 1 * rand(new_pkt,1);
                 min_t_temp = min(min( ...
                     pkt_list(ptr(idx)+blg(idx):scs(idx)+blg(idx)+new_pkt,1,idx)+bof)+1, min_t_temp);
                 new_blg = sum(pkt_list(ptr(idx)+blg(idx):scs(idx)+blg(idx)+new_pkt,1,idx) < min_t_temp);
@@ -86,7 +86,7 @@ parfor (ldx = 1:length(lambda),6)
                     new_blg = sum(pkt_list(ptr(idx)+blg(idx):end,1,idx) < min_t(idx));
                     if new_blg > 0
                         pkt_list(ptr(idx)+blg(idx):scs(idx)+blg(idx)+new_blg,1,idx) = pkt_list( ...
-                            ptr(idx)+blg(idx):scs(idx)+blg(idx)+new_blg,1,idx) + exprnd(1/mu(idx),new_blg,1);
+                            ptr(idx)+blg(idx):scs(idx)+blg(idx)+new_blg,1,idx) + 1 + 2 ^ 1 * rand(new_pkt,1);
                         pkt_list(ptr(idx)+blg(idx):scs(idx)+blg(idx)+new_blg,3,idx) = 1;
                         blg(idx) = blg(idx) + new_blg;
                         pkt_list(ptr(idx):scs(idx)+blg(idx),:,idx) = ...
@@ -103,7 +103,7 @@ parfor (ldx = 1:length(lambda),6)
             end
         end
         mu = betaT ./ max(blg,1);
-        %% CRP procedure
+        %% CRP procedure --scheduling for first & last packet
         status_ = status == 1;
         if sum(status_) == 1
             crp_idx = find(status == 1);
@@ -118,7 +118,8 @@ parfor (ldx = 1:length(lambda),6)
             status_(crp_idx) = 0;
             for kk = 1:CHANNEL
                 if status_(kk) > 0
-                    pkt_list(ptr(kk):ptr(kk)+blg_end(kk),1,kk) = min_t(kk) + exprnd(1/mu(kk),blg_end(kk)+1,1);
+                    pkt_list(ptr(kk):ptr(kk)+blg_end(kk),3,kk) = pkt_list(ptr(kk):ptr(kk)+blg_end(kk),3,kk) + 1;
+                    pkt_list(ptr(kk):ptr(kk)+blg_end(kk),1,kk) = min_t(kk) + BEB(pkt_list(ptr(kk):ptr(kk)+blg_end(kk),3,kk));
                     pkt_list(ptr(kk):scs(kk)+blg(kk),:,kk) = sortrows(pkt_list(ptr(kk):scs(kk)+blg(kk),:,kk),1);
                 end
             end
@@ -129,41 +130,32 @@ parfor (ldx = 1:length(lambda),6)
             pkt_list(ptr(crp_idx):ptr(crp_idx)+blg_end(crp_idx),1,crp_idx) = min_t(crp_idx);
             crp_start_t = min_t(crp_idx);
             crp_list = pkt_list(ptr(crp_idx):ptr(crp_idx)+blg_end(crp_idx),:,crp_idx);
+
             if sum(crp_list(:,3) == 1) <= 1
                 disp FALSE_COLL
             end
+            
             crp_min_t = 0;
             crp_prob = 0.5;
             crp_blg = sum(crp_list(:,3) == 1);
             crp_num = crp_num + crp_blg;
-            while sum(crp_list(:,3) == 1)  > 0 && crp_min_t < ENDTIME
-                if sum(crp_list(:,3) == 1) == 1
-                    ic = find(crp_list(:,3) == 1);
-                    crp_list(ic,3) = -1;   % column 3 == -1 => scs
-                    scs(crp_idx) = scs(crp_idx) + 1;
-                    crp_scs = crp_scs + 1;
-                    dly(crp_idx) = dly(crp_idx) + crp_list(ic,1) - crp_list(ic,2) + 1;
-                    crp_min_t = crp_list(ic,1) + 1;
-                else
-                    crp_trans = rand(sum(crp_list(:,3)==1),1) <= crp_prob;
-                    if sum(crp_trans) == 0
-                        crp_prob = 0.5;
-                    elseif sum(crp_trans) == 1
-                        crp_prob = 1;
-                        crp_pretrans_idx = find(crp_list(:,3) == 1);
-                        crp_trans_idx = find(crp_trans);
-                        crp_list(crp_pretrans_idx(crp_trans_idx),3) = -1;
-                        scs(crp_idx) = scs(crp_idx) + 1;
-                        crp_scs = crp_scs + 1;
-                        dly(crp_idx) = dly(crp_idx) + crp_list(crp_pretrans_idx(crp_trans_idx),1) - crp_list(crp_pretrans_idx(crp_trans_idx),2) + 1;
-                    else
-                        crp_prob = 0.5;
-                        crp_pretrans_idx = find(crp_list(:,3) == 1);
-                        crp_trans_idx = find(~crp_trans);
-                        crp_list(crp_pretrans_idx(crp_trans_idx),3) = 0;
-                    end
-                    crp_list(:,1) = crp_list(:,1) + 1;
-                end
+
+            % First Packet
+            crp_list(1,3) = -1;
+            scs(crp_idx) = scs(crp_idx) + 1;
+            crp_scs = crp_scs + 1;
+            dly(crp_idx) = dly(crp_idx) + crp_list(1,1) - crp_list(1,2) + 1;
+            crp_list(end,1) = crp_list(1,1) + 1;
+
+            % Last Packet
+            crp_list(end,3) = -1;
+            scs(crp_idx) = scs(crp_idx) + 1;
+            crp_scs = crp_scs + 1;
+            dly(crp_idx) = dly(crp_idx) + crp_list(end,1) - crp_list(end,2) + 1;
+            crp_min_t = crp_list(end,1) + 1;
+
+            if crp_min_t - crp_start_t ~= 2
+                disp FALSE_SCHEDULING
             end
             crp_t = crp_t + crp_min_t - crp_start_t;
 
@@ -211,7 +203,7 @@ parfor (ldx = 1:length(lambda),6)
                     min_t_temp = pkt_list(ptr(jdx),1,jdx) + 1;    % packet length equals 1
                     new_pkt = sum(pkt_list(ptr(jdx)+blg(jdx):end,1,jdx) < min_t_temp);
                     if new_pkt > 0
-                        bof = exprnd(1/mu(jdx), new_pkt, 1);
+                        bof = 1 + 2 ^ 1 * rand(new_pkt,1);
                         min_t_temp = min(min( ...
                             pkt_list(ptr(jdx)+blg(jdx):scs(jdx)+blg(jdx)+new_pkt,1,jdx)+bof)+1, min_t_temp);
                         new_blg = sum(pkt_list(ptr(jdx)+blg(jdx):scs(jdx)+blg(jdx)+new_pkt,1,jdx) < min_t_temp);
@@ -246,7 +238,7 @@ parfor (ldx = 1:length(lambda),6)
                             new_blg = sum(pkt_list(ptr(jdx)+blg(jdx):end,1,jdx) < min_t(jdx));
                             if new_blg > 0
                                 pkt_list(ptr(jdx)+blg(jdx):scs(jdx)+blg(jdx)+new_blg,1,jdx) = pkt_list( ...
-                                    ptr(jdx)+blg(jdx):scs(jdx)+blg(jdx)+new_blg,1,jdx) + exprnd(1/mu(jdx),new_blg,1);
+                                    ptr(jdx)+blg(jdx):scs(jdx)+blg(jdx)+new_blg,1,jdx) + 1 + 2 ^ 1 * rand(new_pkt,1);
                                 pkt_list(ptr(jdx)+blg(jdx):scs(jdx)+blg(jdx)+new_blg,3,jdx) = 1;
                                 blg(jdx) = blg(jdx) + new_blg;
                                 pkt_list(ptr(jdx):scs(jdx)+blg(jdx),:,jdx) = sortrows(pkt_list(ptr(jdx):scs(jdx)+blg(jdx),:,jdx),1);
@@ -333,3 +325,16 @@ title('Slotted ALOHA CRP','Interpreter','latex','FontSize',17.6)
 % xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
 % ylabel('Throughput (packet/sec)','Interpreter','latex','FontSize',17.6)
 % title('Slotted CRP','Interpreter','latex','FontSize',17.6)
+
+function backoff = BEB(sz_cnt)
+%BEB - Description
+%
+% Syntax: backoff = BEB(sz_cnt)
+%
+% Long description
+    backoff = sz_cnt;
+    sz_cnt = sz_cnt + 1;
+    for idx = 1:size(sz_cnt)
+        backoff(idx) = 1 + 2 ^ sz_cnt(idx) * rand;
+    end
+end

@@ -1,23 +1,24 @@
 clear
 
-ENDTIME = 1e5;
-CHANNEL = 1;
+ENDTIME = 2e5;
+CHANNEL = 2;
 
-lambda = 0.03:0.01:0.6;
-betaT = 0.5;
-crp_mu = 0.25;
+lambda = 0.01:0.01:0.42;
+betaT = 0.6468;
 
-sys_thrpt = zeros(length(lambda),1);
+thrpt_list = zeros(length(lambda),1);
 chanl_thrpt = zeros(length(lambda),1);
 dly_list = zeros(length(lambda),1);
 
 crp_thrpt = zeros(length(lambda),1);
 crp_thrpt_ideal = zeros(length(lambda),1);
-crp_chnl_util = zeros(length(lambda),1);
+crp_len = zeros(length(lambda),1);
 crp_invov = zeros(length(lambda),1);
 
+crp_mu = 0.25;
+
 tic
-parfor ldx = 1:length(lambda)
+parfor (ldx = 1:length(lambda),6)
     % initialize param & packet list
     num = ceil(1.5 * lambda(ldx) * ENDTIME);
     ptr = ones(CHANNEL,1);
@@ -29,10 +30,10 @@ parfor ldx = 1:length(lambda)
     status = blg;
     blg_end = blg;
     mu = blg;
-    mu(1:end) = betaT / 2;
-    chnl_scs = scs;
+    mu(1:2) = 0.6468 / 2;
 
     crp_flag = 0;
+    wait_flag = blg;
 
     crp_t = 0;
     crp_cnt = 0;
@@ -41,14 +42,14 @@ parfor ldx = 1:length(lambda)
     crp_num = 0;
 
     pkt_list = zeros(num,3,CHANNEL);
-    for ii = 1:CHANNEL
-        pkt_list(:,1,ii) = cumsum(exprnd(1/lambda(ldx), num, 1));
-        pkt_list(:,2,ii) = pkt_list(:,1,ii);
+    for i1 = 1:CHANNEL
+        pkt_list(:,1,i1) = cumsum(exprnd(1/lambda(ldx), num, 1));
+        pkt_list(:,2,i1) = pkt_list(:,1,i1);
     end
     
-    while sum(min_t <= ENDTIME) > 0
+    while min_t(1) < ENDTIME || min_t(2) < ENDTIME
         %% Before Transmission
-        for idx = 1:CHANNEL
+        for idx = 1:2
             if blg(idx) == 0
                 pkt_list(ptr(idx),1,idx) = pkt_list(ptr(idx),1,idx) + exprnd(mu(idx),1);
                 pkt_list(ptr(idx),3,idx) = 1;    % stack in backlog list
@@ -71,18 +72,14 @@ parfor ldx = 1:length(lambda)
             sect = sum(pkt_list(ptr(idx):scs(idx)+blg(idx),1,idx) < min_t(idx));
             if sect == 1
                 scs(idx) = scs(idx) + 1;
-                chnl_scs(idx) = chnl_scs(idx) + 1;
                 dly(idx) = dly(idx) + pkt_list(ptr(idx),1,idx) - pkt_list(ptr(idx),2,idx) + 1;
                 pkt_list(ptr(idx),3,idx) = -1;   % column 3 == -1 => scs(idx)
                 ptr(idx) = ptr(idx) + 1;
                 blg(idx) = blg(idx) - 1;
-                status(idx) = -1;
+                status(idx) = 1;
             else
                 coll_start_t = pkt_list(ptr(idx),1,idx);
                 blg_end(idx) = sect - 1;
-                if sect < 1
-                    disp FALSE_SECT_1
-                end
                 % collision period
                 while blg_end(idx) > 0 && min_t(idx) < ENDTIME
                     min_t(idx) = pkt_list(ptr(idx)+blg_end(idx),1,idx) + 1;
@@ -102,37 +99,26 @@ parfor ldx = 1:length(lambda)
                         blg_end(idx) = sect - 1;
                     end
                 end
-                if blg_end(idx) < 1
-                    disp FLASE_BLGEND
-                end
-                status(idx) = 1;
+                status(idx) = 2;
             end
         end
         mu = betaT ./ max(blg,1);
-
-        % Transmission end
-        status_ = status == 1;
-        if sum(status_) == 1
-            crp_idx = find(status == 1);
+        %% CRP procedure
+        if sum(status == 2) == 1
+            crp_idx = find(status == 2);
             crp_flag = 1;
-        elseif sum(status_) > 1
-            pkt_list_ = zeros(CHANNEL,1);
-            for jj = 1:CHANNEL
-                pkt_list_(jj) = pkt_list(ptr(jj),1,jj);
-            end
-            pkt_list_(~status_) = max(pkt_list_) + 1;
-            crp_idx = find(pkt_list_ == min(pkt_list_));
-            status_(crp_idx) = 0;
-            for kk = 1:CHANNEL
-                if status_(kk) > 0
-                    pkt_list(ptr(kk):ptr(kk)+blg_end(kk),1,kk) = min_t(kk) + exprnd(1/mu(kk),blg_end(kk)+1,1);
-                    pkt_list(ptr(kk):scs(kk)+blg(kk),:,kk) = sortrows(pkt_list(ptr(kk):scs(kk)+blg(kk),:,kk),1);
-                end
+        elseif sum(status == 2) == 2
+            if min_t(1) <= min_t(2)
+                crp_idx = 1;
+            else
+                crp_idx = 2;
             end
             crp_flag = 1;
+            jdx = 3 - crp_idx;
+            pkt_list(ptr(jdx):ptr(jdx)+blg_end(jdx),1,jdx) = min_t(jdx) + exprnd(1/mu(jdx),blg_end(jdx)+1,1);
+            pkt_list(ptr(jdx):scs(jdx)+blg(jdx),:,jdx) = sortrows(pkt_list(ptr(jdx):scs(jdx)+blg(jdx),:,jdx),1);
         end
-
-        %% CRP
+%         status = 0;
         if crp_flag == 1
             crp_cnt = crp_cnt + 1;
             pkt_list(ptr(crp_idx):ptr(crp_idx)+blg_end(crp_idx),1,crp_idx) = min_t(crp_idx);
@@ -141,7 +127,6 @@ parfor ldx = 1:length(lambda)
             if sum(crp_list(:,3) == 1) <= 1
                 disp FALSE_COLL
             end
-            crp_scs_ = 0;
             crp_min_t = 0;
             crp_blg = sum(crp_list(:,3) == 1);
             crp_num = crp_num + crp_blg;
@@ -153,8 +138,8 @@ parfor ldx = 1:length(lambda)
                     crp_list(ic,3) = -1;   % column 3 == -1 => scs
                     scs(crp_idx) = scs(crp_idx) + 1;
                     crp_scs = crp_scs + 1;
-                    crp_scs_ = crp_scs_ + 1;
                     dly(crp_idx) = dly(crp_idx) + crp_list(ic,1) - crp_list(ic,2) + 1;
+                    blg(crp_idx) = blg(crp_idx) - 1;
                     crp_min_t = crp_list(ic,1) + 1;
                 else
                     crp_trans_idx = crp_list(:,3) == 1;
@@ -164,9 +149,9 @@ parfor ldx = 1:length(lambda)
                     if crp_sect == 1
                         scs(crp_idx) = scs(crp_idx) + 1;
                         crp_scs = crp_scs + 1;
-                        crp_scs_ = crp_scs_ + 1;
                         dly(crp_idx) = dly(crp_idx) + crp_trans_list(1,1) - crp_trans_list(1,2) + 1;
                         crp_trans_list(1,3) = -1;
+                        blg(crp_idx) = blg(crp_idx) - 1;
                         crp_trans_list(2:end,1) = crp_trans_list(1,1) + 1;
                     else
                         crp_sect_num = crp_sect - 1;
@@ -189,109 +174,82 @@ parfor ldx = 1:length(lambda)
             end
             crp_t = crp_t + crp_min_t - crp_start_t;
 
-            if sum(crp_list(:,3) < -1) > 0 || crp_scs_ ~= sum(crp_list(:,3) < 0)
+            if sum(crp_list(:,3) < -1) > 0
                 disp FALSE_CRP_SCS
             end
 
             % CRP end
-            crp_blg_end = sum(crp_list(:,3) >= 0);
-            blg(crp_idx) = blg(crp_idx) - sum(crp_list(:,3) < 0);
-            if crp_blg_end > 0
-                crp_list(crp_list(:,3)>=0,1) = crp_min_t;
-                crp_list(crp_list(:,3)>=0,3) = 0;
+            if sum(crp_list(:,3) >= 0) > 0
+                crp_list(crp_list(:,3)>=0,1) = crp_min_t + exprnd(1/mu(crp_idx),sum(crp_list(:,3)>=0),1);
+                crp_list(crp_list(:,3)>=0,3) = 1;
                 crp_list = sortrows(crp_list,1);
             end
             pkt_list(ptr(crp_idx):ptr(crp_idx)+blg_end(crp_idx),:,crp_idx) = crp_list;
             ptr(crp_idx) = scs(crp_idx) + 1;
-            if crp_blg_end > 0
-                if blg(crp_idx) - crp_blg_end > 0
-                    pkt_list(ptr(crp_idx):scs(crp_idx)+blg(crp_idx)-crp_blg_end,:,crp_idx) = pkt_list(ptr(crp_idx)+crp_blg_end:scs(crp_idx)+blg(crp_idx),:,crp_idx);
-                    pkt_list(ptr(crp_idx)+blg(crp_idx)-crp_blg_end:scs(crp_idx)+blg(crp_idx),:,crp_idx) = crp_list(crp_blg-crp_blg_end+1:crp_blg,:);
-                    blg(crp_idx) = blg(crp_idx) - crp_blg_end;
-                    pkt_list(ptr(crp_idx):scs(crp_idx)+blg(crp_idx),:,crp_idx) = sortrows(pkt_list(ptr(crp_idx):scs(crp_idx)+blg(crp_idx),:,crp_idx),1);
-                    pkt_list(ptr(crp_idx)+blg(crp_idx):end,:,crp_idx) = sortrows(pkt_list(ptr(crp_idx)+blg(crp_idx):end,:,crp_idx),1);
-                else
-                    if blg(crp_idx) - crp_blg_end ~= 0
-                        disp FALSE_CRP_BLG_END
-                    end
-                    blg(crp_idx) = blg(crp_idx) - crp_blg_end;
-                    pkt_list(ptr(crp_idx)+blg(crp_idx):end,:,crp_idx) = sortrows(pkt_list(ptr(crp_idx)+blg(crp_idx):end,:,crp_idx),1);
-                end
-            else
-                pkt_list(ptr(crp_idx):scs(crp_idx)+blg(crp_idx),:,crp_idx) = sortrows(pkt_list(ptr(crp_idx):scs(crp_idx)+blg(crp_idx),:,crp_idx),1);
-            end
+            pkt_list(ptr(crp_idx):scs(crp_idx)+blg(crp_idx),:,crp_idx) = sortrows(pkt_list(ptr(crp_idx):scs(crp_idx)+blg(crp_idx),:,crp_idx),1);
 
             %% During CRP
-            for jdx = 1:CHANNEL
-                prev_min_t = min_t(jdx);
-                while sum(pkt_list(ptr(jdx):end,1,jdx) < crp_min_t) > 0
-                    if blg(jdx) == 0
-                        pkt_list(ptr(jdx),1,jdx) = pkt_list(ptr(jdx),1,jdx) + exprnd(mu(jdx),1);
-                        pkt_list(ptr(jdx),3,jdx) = 1;    % stack in backlog list
-                        blg(jdx) = 1;
+            for ii = 1:2
+                while sum(pkt_list(ptr(ii):end,1,ii) < crp_min_t) > 0
+                    if blg(ii) == 0
+                        pkt_list(ptr(ii),1,ii) = pkt_list(ptr(ii),1,ii) + exprnd(mu(ii),1);
+                        pkt_list(ptr(ii),3,ii) = 1;    % stack in backlog list
+                        blg(ii) = 1;
                     end
-                    min_t_temp = pkt_list(ptr(jdx),1,jdx) + 1;    % packet length equals 1
-                    new_pkt = sum(pkt_list(ptr(jdx)+blg(jdx):end,1,jdx) < min_t_temp);
+                    min_t_temp = pkt_list(ptr(ii),1,ii) + 1;    % packet length equals 1
+                    new_pkt = sum(pkt_list(ptr(ii)+blg(ii):end,1,ii) < min_t_temp);
                     if new_pkt > 0
-                        bof = exprnd(1/mu(jdx), new_pkt, 1);
+                        bof = exprnd(1/mu(ii), new_pkt, 1);
                         min_t_temp = min(min( ...
-                            pkt_list(ptr(jdx)+blg(jdx):scs(jdx)+blg(jdx)+new_pkt,1,jdx)+bof)+1, min_t_temp);
-                        new_blg = sum(pkt_list(ptr(jdx)+blg(jdx):scs(jdx)+blg(jdx)+new_pkt,1,jdx) < min_t_temp);
-                        pkt_list(ptr(jdx)+blg(jdx):scs(jdx)+blg(jdx)+new_blg,1,jdx) = pkt_list( ...
-                            ptr(jdx)+blg(jdx):scs(jdx)+blg(jdx)+new_blg,1,jdx) + bof(1:new_blg);
-                        pkt_list(ptr(jdx)+blg(jdx):scs(jdx)+blg(jdx)+new_blg,3,jdx) = 1;
-                        blg(jdx) = blg(jdx) + new_blg;
-                        pkt_list(ptr(jdx):scs(jdx)+blg(jdx),:,jdx) = sortrows(pkt_list(ptr(jdx):scs(jdx)+blg(jdx),:,jdx),1);
+                            pkt_list(ptr(ii)+blg(ii):scs(ii)+blg(ii)+new_pkt,1,ii)+bof)+1, min_t_temp);
+                        new_blg = sum(pkt_list(ptr(ii)+blg(ii):scs(ii)+blg(ii)+new_pkt,1,ii) < min_t_temp);
+                        pkt_list(ptr(ii)+blg(ii):scs(ii)+blg(ii)+new_blg,1,ii) = pkt_list( ...
+                            ptr(ii)+blg(ii):scs(ii)+blg(ii)+new_blg,1,ii) + bof(1:new_blg);
+                        pkt_list(ptr(ii)+blg(ii):scs(ii)+blg(ii)+new_blg,3,ii) = 1;
+                        blg(ii) = blg(ii) + new_blg;
+                        pkt_list(ptr(ii):scs(ii)+blg(ii),:,ii) = sortrows(pkt_list(ptr(ii):scs(ii)+blg(ii),:,ii),1);
                     end
-                    % idle_t = idle_t + pkt_list(ptr(jdx),1) - min_t;
+                    % idle_t = idle_t + pkt_list(ptr(ii),1) - min_t;
                     % if idle_t < 0
                     %     disp FALSE_IDLE_MINUS
                     %     % return
                     % end
-                    min_t(jdx) = pkt_list(ptr(jdx),1,jdx) + 1;
-                    if min_t(jdx) > crp_min_t
-                        min_t(jdx) = prev_min_t;
-                        break;
-                    end
-                    sect = sum(pkt_list(ptr(jdx):scs(jdx)+blg(jdx),1,jdx) < min_t(jdx));
+                    min_t(ii) = pkt_list(ptr(ii),1,ii) + 1;
+                    sect = sum(pkt_list(ptr(ii):scs(ii)+blg(ii),1,ii) < min_t(ii));
                     if sect == 1
-                        prev_min_t = min_t(jdx);
-                        scs(jdx) = scs(jdx) + 1;
-                        chnl_scs(jdx) = chnl_scs(jdx) + 1;
-                        dly(jdx) = dly(jdx) + pkt_list(ptr(jdx),1,jdx) - pkt_list(ptr(jdx),2,jdx) + 1;
-                        pkt_list(ptr(jdx),3,jdx) = -1;   % column 3 == -1 => scs(jdx)
-                        ptr(jdx) = ptr(jdx) + 1;
-                        blg(jdx) = blg(jdx) - 1;
-                        status(jdx) = -1;
+                        scs(ii) = scs(ii) + 1;
+                        dly(ii) = dly(ii) + pkt_list(ptr(ii),1,ii) - pkt_list(ptr(ii),2,ii) + 1;
+                        pkt_list(ptr(ii),3,ii) = -1;   % column 3 == -1 => scs(ii)
+                        ptr(ii) = ptr(ii) + 1;
+                        blg(ii) = blg(ii) - 1;
+                        status(ii) = 1;
                     else
-                        coll_start_t = pkt_list(ptr(jdx),1,jdx);
-                        blg_end(jdx) = sect - 1;
+                        coll_start_t = pkt_list(ptr(ii),1,ii);
+                        blg_end(ii) = sect - 1;
                         % collision period
-                        while blg_end(jdx) > 0 && min_t(jdx) < ENDTIME
-                            min_t(jdx) = pkt_list(ptr(jdx)+blg_end(jdx),1,jdx) + 1;
-                            new_blg = sum(pkt_list(ptr(jdx)+blg(jdx):end,1,jdx) < min_t(jdx));
+                        while blg_end(ii) > 0 && min_t(ii) < ENDTIME
+                            min_t(ii) = pkt_list(ptr(ii)+blg_end(ii),1,ii) + 1;
+                            new_blg = sum(pkt_list(ptr(ii)+blg(ii):end,1,ii) < min_t(ii));
                             if new_blg > 0
-                                pkt_list(ptr(jdx)+blg(jdx):scs(jdx)+blg(jdx)+new_blg,1,jdx) = pkt_list( ...
-                                    ptr(jdx)+blg(jdx):scs(jdx)+blg(jdx)+new_blg,1,jdx) + exprnd(1/mu(jdx),new_blg,1);
-                                pkt_list(ptr(jdx)+blg(jdx):scs(jdx)+blg(jdx)+new_blg,3,jdx) = 1;
-                                blg(jdx) = blg(jdx) + new_blg;
-                                pkt_list(ptr(jdx):scs(jdx)+blg(jdx),:,jdx) = sortrows(pkt_list(ptr(jdx):scs(jdx)+blg(jdx),:,jdx),1);
+                                pkt_list(ptr(ii)+blg(ii):scs(ii)+blg(ii)+new_blg,1,ii) = pkt_list( ...
+                                    ptr(ii)+blg(ii):scs(ii)+blg(ii)+new_blg,1,ii) + exprnd(1/mu(ii),new_blg,1);
+                                pkt_list(ptr(ii)+blg(ii):scs(ii)+blg(ii)+new_blg,3,ii) = 1;
+                                blg(ii) = blg(ii) + new_blg;
+                                pkt_list(ptr(ii):scs(ii)+blg(ii),:,ii) = sortrows(pkt_list(ptr(ii):scs(ii)+blg(ii),:,ii),1);
                             end
-                            sect = sum(pkt_list(ptr(jdx):scs(jdx)+blg(jdx),1,jdx) < min_t(jdx));
-                            if sect == blg_end(jdx) + 1
+                            sect = sum(pkt_list(ptr(ii):scs(ii)+blg(ii),1,ii) < min_t(ii));
+                            if sect == blg_end(ii) + 1
                                 break;
                             else
-                                blg_end(jdx) = sect - 1;
+                                blg_end(ii) = sect - 1;
                             end
                         end
-                        status(jdx) = 1;
-                        if min_t(jdx) > crp_min_t
-                            min_t(jdx) = prev_min_t;
+                        status(ii) = 2;
+                        if min_t(ii) > crp_min_t
                             break;
                         else
-                            min_t(jdx) = prev_min_t;
-                            pkt_list(ptr(jdx):ptr(jdx)+blg_end(jdx),1,jdx) = min_t(jdx) + exprnd(1/mu(jdx),blg_end(jdx)+1,1);
-                            pkt_list(ptr(jdx):scs(jdx)+blg(jdx),:,jdx) = sortrows(pkt_list(ptr(jdx):scs(jdx)+blg(jdx),:,jdx),1);
+                            pkt_list(ptr(ii):ptr(ii)+blg_end(ii),1,ii) = min_t(ii) + exprnd(1/mu(ii),blg_end(ii)+1,1);
+                            pkt_list(ptr(ii):scs(ii)+blg(ii),:,ii) = sortrows(pkt_list(ptr(ii):scs(ii)+blg(ii),:,ii),1);
                         end
                     end
                     mu = betaT ./ max(blg,1);
@@ -301,61 +259,57 @@ parfor ldx = 1:length(lambda)
         end
         mu = betaT ./ max(blg,1);
     end
-    if sum(chnl_scs) + crp_scs ~= sum(scs)
-        disp(ldx);
-    end
-    sys_thrpt(ldx) = sum(scs ./ min_t) / (CHANNEL+1);
-    chanl_thrpt(ldx) = mean(chnl_scs ./ min_t);
-    dly_list(ldx) = mean(dly ./ scs);
-    crp_thrpt(ldx) = crp_scs / mean(min_t);
+    thrpt_list(ldx) = sum(scs ./ min_t) / 3;
+    chanl_thrpt(ldx) = (sum(scs)-crp_scs) / sum(min_t);
+    dly_list(ldx) = sum(dly ./ scs) / 2;
+    crp_thrpt(ldx) = crp_scs / sum(min_t) * 2;
     crp_thrpt_ideal(ldx) = crp_scs / crp_t;
-    crp_chnl_util(ldx) = crp_t / mean(min_t);
+    crp_len(ldx) = crp_t / sum(min_t) * 2;
     crp_invov(ldx) = crp_num / crp_cnt;
 end
 toc
 
-pt = find(sys_thrpt == max(sys_thrpt));
-disp(sys_thrpt(pt));
-disp(lambda(pt) * CHANNEL / (CHANNEL+1));
+pt = find(thrpt_list == max(thrpt_list));
+disp(thrpt_list(pt));
+disp(lambda(pt));
 
 yy = ones(length(lambda),1);
 yy = yy .* 0.184;
 
-ftitle = sprintf('%d contention channels Unslotted ALOHA',CHANNEL);
-xaxis_ = lambda * CHANNEL / (CHANNEL+1);
+lambda = lambda * CHANNEL / (CHANNEL+1);
 
 figure
-plot(xaxis_,crp_thrpt,xaxis_,chanl_thrpt,xaxis_,sys_thrpt,xaxis_,yy,'--','LineWidth',1.5)
+plot(lambda,crp_thrpt,lambda,chanl_thrpt,lambda,thrpt_list,lambda,yy,'--','LineWidth',1.5)
 legend('CRP Thrpughput','Channel Throughput','Total Throughput','Location','southeast','Interpreter','latex','FontSize',14.4)
 grid on
 % xlim([0 0.36])
 xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
 ylabel('Throughput (packet/sec)','Interpreter','latex','FontSize',17.6)
-title(ftitle,'Interpreter','latex','FontSize',17.6)
+title('Pure ALOHA CRP','Interpreter','latex','FontSize',17.6)
 
 figure
-plot(xaxis_,dly_list,'LineWidth',1)
+plot(lambda,dly_list,'LineWidth',1)
 legend('Delay','Location','northwest','Interpreter','latex','FontSize',14.4)
 grid on
 ylim([0 300])
 xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
 ylabel('Delay (sec)','Interpreter','latex','FontSize',17.6)
-title('Unslotted ALOHA CRP','Interpreter','latex','FontSize',17.6)
+title('Pure ALOHA CRP','Interpreter','latex','FontSize',17.6)
 
 figure
-plot(xaxis_,crp_chnl_util,'LineWidth',1.5)
-legend(ftitle,'Location','southeast','Interpreter','latex','FontSize',14.4)
+plot(lambda,crp_len,'LineWidth',1.5)
+legend('CRP Propotion','Location','southeast','Interpreter','latex','FontSize',14.4)
 grid on
 % xlim([0 0.36])
 xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
-ylabel('Channel Utilization','Interpreter','latex','FontSize',17.6)
-title('Unslotted ALOHA CRP','Interpreter','latex','FontSize',17.6)
+ylabel('Channel Efficiency','Interpreter','latex','FontSize',17.6)
+title('Pure ALOHA CRP','Interpreter','latex','FontSize',17.6)
 
 figure
-plot(xaxis_,crp_thrpt_ideal,'LineWidth',1.5)
+plot(lambda,crp_thrpt_ideal,'LineWidth',1.5)
 legend('CRP Throughput Ideal','Location','southeast','Interpreter','latex','FontSize',14.4)
 grid on
 % xlim([0 0.36])
 xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
-ylabel('Channel Utilization','Interpreter','latex','FontSize',17.6)
-title('Unslotted ALOHA CRP','Interpreter','latex','FontSize',17.6)
+ylabel('Channel Efficiency','Interpreter','latex','FontSize',17.6)
+title('Pure ALOHA CRP','Interpreter','latex','FontSize',17.6)

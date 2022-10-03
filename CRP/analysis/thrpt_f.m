@@ -2,11 +2,12 @@
 % N*beta*T
 clear
 
-T = 0.8;
+T = 1;
 num = 200;
 beta = 0.0001:0.0001:0.02;
 
 thrpt = zeros(length(beta),1);
+prob_cc = thrpt;
 
 % load crp data
 fname1 = sprintf('data/finite/CRP_L_%.2f_%d.mat',T,num);
@@ -29,6 +30,7 @@ parfor (bdx = 1:length(beta),6)
     end
     expect_busy = prob_coll(1) * expect_coll(1) + sum(prob_coll(2:num) .* (expect_coll(2:num) + crp_l));
     thrpt(bdx) = (prob_coll(1) + sum(prob_coll(2:num) .* crp_s)) / (1 / (num * beta(bdx)) + expect_busy);
+    prob_cc(bdx) = (1-prob_coll(1))^2;
 end
 toc
 

@@ -1,7 +1,7 @@
 clear
 
 THEATA = 0.99;
-ENDTIME = 1e6;
+ENDTIME = 2e5;
 CHANNEL = 2;
 
 lambda = 0.02:0.02:0.42;
@@ -345,14 +345,14 @@ toc
 
 pt = find(sys_thrpt == max(sys_thrpt));
 disp(sys_thrpt(pt));
-disp(lambda(pt) * 2 / 3);
+disp(lambda(pt) * CHANNEL / (CHANNEL+1));
 
 yy = ones(length(lambda),1);
 yy = yy .* 0.184;
 
 ftitle = sprintf('%d contention channels S-ALOHA',CHANNEL);
+xaxis_ = lambda * CHANNEL / (CHANNEL+1);
 
-xaxis_ = lambda * 2 / 3;
 figure
 plot(xaxis_,crp_thrpt,xaxis_,chanl_thrpt,xaxis_,sys_thrpt,xaxis_,yy,'--','LineWidth',1.5)
 legend('CRP Thrpughput','Channel Throughput','Total Throughput','Location','southeast','Interpreter','latex','FontSize',14.4)

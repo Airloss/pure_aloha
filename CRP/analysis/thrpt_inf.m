@@ -8,6 +8,7 @@ T = [(0.01:0.01:0.09),(0.1:0.05:1),(1.1:0.1:2)];
 G = [(0.0001:0.0001:1),(1:0.1:3)];
 thrpt = zeros(length(T),1);
 gt = thrpt;
+prob_cc = gt;
 
 tic
 for tdx = 1:length(T)
@@ -18,6 +19,7 @@ for tdx = 1:length(T)
     crp_l(1) = [];
     crp_s(1) = [];
     thrpt_ = zeros(length(G),1);
+    prob_coll_sq = thrpt_;
     for gdx = 1:length(G)
         prob_coll = zeros(num,1);
         expect_coll = prob_coll;
@@ -27,10 +29,12 @@ for tdx = 1:length(T)
         expect_coll(2:num,1) = expect_coll_g(G(gdx), 2:num, T(tdx));
         expect_busy = prob_coll(1) * expect_coll(1) + sum(prob_coll(2:num) .* (expect_coll(2:num) + crp_l));
         thrpt_(gdx) = (prob_coll(1) + sum(prob_coll(2:num) .* crp_s)) / (1 / G(gdx) + expect_busy);
+        prob_coll_sq(gdx) = (1-prob_coll(1))^2;
     end
     pt = find(thrpt_ == max(thrpt_));
     thrpt(tdx) = thrpt_(pt(1)) * T(tdx);
     gt(tdx) = G(pt(1)) * T(tdx);
+    prob_cc(tdx) = prob_coll_sq(pt);
 end
 toc
 

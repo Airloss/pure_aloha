@@ -1,12 +1,15 @@
 clear
 
-ENDTIME = 1e5;
+ENDTIME = 3e5;
 
-lambda = 0.01:0.01:0.25;
+lambda = 0.01:0.01:0.24;
 betaT = 0.5;
 
 thrpt_list = zeros(length(lambda),1);
 dly_list = zeros(length(lambda),1);
+cnt_s_list = dly_list;
+cnt_c_list = dly_list;
+cnt_cc_list = dly_list;
 
 tic
 parfor (ldx = 1:length(lambda),6)
@@ -22,11 +25,14 @@ parfor (ldx = 1:length(lambda),6)
     blg_end = blg;
     mu = 0.6468 / 2;
 
+    cnt_cc = zeros(2,1);
+
     pkt_list = zeros(num,3);
     pkt_list(:,1) = cumsum(exprnd(1/lambda(ldx), num, 1));
     pkt_list(:,2) = pkt_list(:,1);
 
     while min_t <= ENDTIME
+        cnt = cnt + 1;
         if blg == 0
             pkt_list(ptr,1) = pkt_list(ptr,1) + exprnd(mu,1);
             pkt_list(ptr,3) = 1;    % stack in backlog list
@@ -61,6 +67,10 @@ parfor (ldx = 1:length(lambda),6)
             blg = blg - 1;
             mu = betaT / max(blg,1);
         else
+            if cnt - cnt_cc(1,1) == 1
+                cnt_cc(2,1) = cnt_cc(2,1) + 1;
+            end
+            cnt_cc(1,1) = cnt;
             coll_start_t = pkt_list(ptr,1);
             blg_end = sect - 1;
             % collision period
@@ -99,6 +109,9 @@ parfor (ldx = 1:length(lambda),6)
     end
     thrpt_list(ldx) = scs / min_t;
     dly_list(ldx) = dly / scs;
+    cnt_s_list(ldx) = scs /cnt;
+    cnt_c_list(ldx) = (1 - cnt_s_list(ldx))^2;
+    cnt_cc_list(ldx) = cnt_cc(2,1) / cnt;
 end
 toc
 
@@ -117,6 +130,13 @@ figure
 plot(lambda,dly_list,'LineWidth',1)
 grid on
 ylim([0 300])
+xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
+ylabel('Throughput (packet/sec)','Interpreter','latex','FontSize',17.6)
+title('Pure ALOHA','Interpreter','latex','FontSize',17.6)
+
+figure
+plot(lambda,cnt_c_list,lambda,cnt_cc_list,'LineWidth',1)
+grid on
 xlabel('$\lambda$','Interpreter','latex','FontSize',17.6)
 ylabel('Throughput (packet/sec)','Interpreter','latex','FontSize',17.6)
 title('Pure ALOHA','Interpreter','latex','FontSize',17.6)
